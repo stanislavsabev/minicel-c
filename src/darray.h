@@ -35,21 +35,21 @@ typedef struct darr_meta_t {
 /**
  * @brief For internal use, converts an array pointer to darr_meta_t
  * pointer. pointer
- * @param arr - the array
+ * @param arr the array
  * @return darr_meta_t * - pointer to the array meta data
  */
 #define _darr_arr_to_meta(arr) (&((darr_meta_t *)(arr))[-1])
 
 /**
  * @brief For internal use, converts darr_meta_t pointer to array pointer.
- * @param ptr - pointer to the darr_meta_t struct
+ * @param ptr pointer to the darr_meta_t struct
  * @return pointer to the array
  */
 #define _darr_meta_to_arr(ptr) ((void *)&((darr_meta_t *)(ptr))[1])
 
 /**
  * @brief Gets current capacity of the array.
- * @param arr - the array
+ * @param arr the array
  * @return size_t - the array capacity
  */
 #define darr_capacity(arr) \
@@ -57,14 +57,14 @@ typedef struct darr_meta_t {
 
 /**
  * @brief Gets the current length of the array.
- * @param arr - the array
+ * @param arr the array
  * @return size_t - the array length
  */
 #define darr_len(arr) ((arr) ? _darr_arr_to_meta(arr)->length : (size_t)0)
 
 /**
  * @brief Returns non-zero if the array is empty.
- * @param arr - the array
+ * @param arr the array
  * @return size_t - non-zero if empty, zero if non-empty
  */
 #define darr_is_empty(arr) (darr_len(arr) == 0)
@@ -73,8 +73,8 @@ typedef struct darr_meta_t {
  * @brief Grows the array to be at least <capacity> elements big.
  * If <capacity> is greater than the current capacity, the function
  * will reallocate array's storage and increase its capacity.
- * @param arr - the array
- * @param capacity - size_t - minimum capacity for the array.
+ * @param arr the array
+ * @param capacity size_t - minimum capacity for the array.
  * @return void
  */
 #define darr_reserve(arr, capacity)             \
@@ -87,7 +87,7 @@ typedef struct darr_meta_t {
 
 /**
  * @brief Clear all of the elements from the array.
- * @param arr - the array
+ * @param arr the array
  * @return void
  */
 #define darr_clear(arr)            \
@@ -100,7 +100,7 @@ typedef struct darr_meta_t {
 /**
  * @brief Frees the array memory.
  * NOTE: The array does not manage the memory its elements.
- * @param arr - the array
+ * @param arr the array
  * @return void
  */
 #define darr_free(arr)                           \
@@ -113,7 +113,7 @@ typedef struct darr_meta_t {
 
 /**
  * @brief Returns an iterator to first element of the array.
- * @param arr - the array
+ * @param arr the array
  * @return pointer to the first element or NULL
  */
 #define darr_begin(arr) (arr)
@@ -121,7 +121,7 @@ typedef struct darr_meta_t {
 /**
  * @brief Returns an iterator to one past the last element
  * of the array.
- * @param arr - the array
+ * @param arr the array
  * @return pointer to one past the last element or NULL
  */
 #define darr_end(arr) ((arr) ? &((arr)[darr_len(arr)]) : NULL)
@@ -129,7 +129,7 @@ typedef struct darr_meta_t {
 /**
  * @brief Returns an iterator to the last element
  * of the array.
- * @param arr - the array
+ * @param arr the array
  * @return pointer to the last element or NULL
  */
 #define darr_back(arr) ((arr) ? &((arr)[darr_len(arr) - 1]) : NULL)
@@ -137,7 +137,7 @@ typedef struct darr_meta_t {
 /**
  * @brief Computes the capacity of the next grow.
  * Capacity is increased by multiples of 2.
- * @param capacity - current capacity
+ * @param capacity current capacity
  * @return size_t - capacity after next grow
  */
 #define darr_compute_next_grow(capacity) \
@@ -145,8 +145,8 @@ typedef struct darr_meta_t {
 
 /**
  * @brief Adds an element to the end of the array.
- * @param arr - the array
- * @param value - the value to add
+ * @param arr the array
+ * @param value the value to add
  * @return void
  */
 #define darr_append(arr, value)                                    \
@@ -161,9 +161,9 @@ typedef struct darr_meta_t {
 
 /**
  * @brief Inserts element to the array at given <ix>.
- * @param arr - the array
- * @param ix - index where the new element is inserted.
- * @param val - value to be copied (or moved) to the inserted elements.
+ * @param arr the array
+ * @param ix index where the new element is inserted.
+ * @param val value to be copied (or moved) to the inserted elements.
  * @return void
  */
 #define darr_insert(arr, ix, val)                                  \
@@ -183,8 +183,8 @@ typedef struct darr_meta_t {
 /**
  * @brief Removes the last element from the array, but copies it to
  * <elem_ptr> first.
- * @param arr - the array
- * @param elem_ptr - pointer to receive the removed element
+ * @param arr the array
+ * @param elem_ptr pointer to receive the removed element
  * @return void
  */
 #define darr_pop_back(arr, elem_ptr)                        \
@@ -198,9 +198,9 @@ typedef struct darr_meta_t {
 
 /**
  * @brief Removes the element at <ix> from the array.
- * @param arr - the array
- * @param ix - index of element to remove
- * @param elem_ptr - pointer to receive the removed element
+ * @param arr the array
+ * @param ix index of element to remove
+ * @param elem_ptr pointer to receive the removed element
  * @return void
  */
 #define darr_remove(arr, ix, elem_ptr)                              \
@@ -223,8 +223,8 @@ typedef struct darr_meta_t {
 
 /**
  * @brief Copy an array.
- * @param src - the source array
- * @param dest - the destination to copy to
+ * @param src the source array
+ * @param dest the destination to copy to
  * @return void
  */
 #define darr_copy(src, dest)                                       \
@@ -238,8 +238,8 @@ typedef struct darr_meta_t {
 
 /**
  * @brief For internal use, sets the capacity of the array.
- * @param arr - the array
- * @param capacity_ - the new capacity to set
+ * @param arr the array
+ * @param capacity_ the new capacity to set
  * @return void
  */
 #define _darr_set_capacity(arr, capacity_)                  \
@@ -251,8 +251,8 @@ typedef struct darr_meta_t {
 
 /**
  * @brief For internal use, sets the length of the array.
- * @param arr - the array
- * @param len - the new length to be set
+ * @param arr the array
+ * @param len the new length to be set
  * @return void
  */
 #define _darr_set_len(arr, len)                     \
@@ -265,8 +265,8 @@ typedef struct darr_meta_t {
 /**
  * @brief For internal use, ensures that the array is at least
  * <capacity> elements big.
- * @param arr - the array
- * @param capacity - the new capacity to set
+ * @param arr the array
+ * @param capacity the new capacity to set
  * @return void
  */
 #define _darr_grow(arr, capacity)                                      \
