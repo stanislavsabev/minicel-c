@@ -52,8 +52,7 @@ typedef struct darr_meta_t {
  * @param arr the array
  * @return size_t - the array capacity
  */
-#define darr_capacity(arr) \
-    ((arr) ? _darr_arr_to_meta(arr)->capacity : (size_t)0)
+#define darr_capacity(arr) ((arr) ? _darr_arr_to_meta(arr)->capacity : (size_t)0)
 
 /**
  * @brief Gets the current length of the array.
@@ -140,8 +139,7 @@ typedef struct darr_meta_t {
  * @param capacity current capacity
  * @return size_t - capacity after next grow
  */
-#define darr_compute_next_grow(capacity) \
-    ((capacity) ? ((capacity)*2) : DARR_INITIAL_CAPACITY_)
+#define darr_compute_next_grow(capacity) ((capacity) ? ((capacity)*2) : DARR_INITIAL_CAPACITY_)
 
 /**
  * @brief Adds an element to the end of the array.
@@ -166,18 +164,17 @@ typedef struct darr_meta_t {
  * @param val value to be copied (or moved) to the inserted elements.
  * @return void
  */
-#define darr_insert(arr, ix, val)                                  \
-    do {                                                           \
-        size_t darr_cap__ = darr_capacity(arr);                    \
-        if (darr_cap__ <= darr_len(arr)) {                         \
-            _darr_grow((arr), darr_compute_next_grow(darr_cap__)); \
-        }                                                          \
-        if ((ix) < darr_len(arr)) {                                \
-            memmove((arr) + (ix) + 1, (arr) + (ix),                \
-                    sizeof(*(arr)) * ((darr_len(arr)) - (ix)));    \
-        }                                                          \
-        (arr)[(ix)] = (val);                                       \
-        _darr_set_len((arr), darr_len(arr) + 1);                   \
+#define darr_insert(arr, ix, val)                                                               \
+    do {                                                                                        \
+        size_t darr_cap__ = darr_capacity(arr);                                                 \
+        if (darr_cap__ <= darr_len(arr)) {                                                      \
+            _darr_grow((arr), darr_compute_next_grow(darr_cap__));                              \
+        }                                                                                       \
+        if ((ix) < darr_len(arr)) {                                                             \
+            memmove((arr) + (ix) + 1, (arr) + (ix), sizeof(*(arr)) * ((darr_len(arr)) - (ix))); \
+        }                                                                                       \
+        (arr)[(ix)] = (val);                                                                    \
+        _darr_set_len((arr), darr_len(arr) + 1);                                                \
     } while (0)
 
 /**
@@ -187,13 +184,12 @@ typedef struct darr_meta_t {
  * @param elem_ptr pointer to receive the removed element
  * @return void
  */
-#define darr_pop_back(arr, elem_ptr)                        \
-    do {                                                    \
-        if ((elem_ptr)) {                                   \
-            memcpy((elem_ptr), &((arr)[darr_len(arr) - 1]), \
-                   sizeof(*(arr)));                         \
-        }                                                   \
-        _darr_set_len((arr), darr_len(arr) - 1);            \
+#define darr_pop_back(arr, elem_ptr)                                         \
+    do {                                                                     \
+        if ((elem_ptr)) {                                                    \
+            memcpy((elem_ptr), &((arr)[darr_len(arr) - 1]), sizeof(*(arr))); \
+        }                                                                    \
+        _darr_set_len((arr), darr_len(arr) - 1);                             \
     } while (0)
 
 /**
@@ -203,22 +199,20 @@ typedef struct darr_meta_t {
  * @param elem_ptr pointer to receive the removed element
  * @return void
  */
-#define darr_remove(arr, ix, elem_ptr)                              \
-    do {                                                            \
-        if (arr) {                                                  \
-            const size_t ln__ = darr_len(arr);                      \
-            if ((ix) == ln__ - 1) {                                 \
-                darr_pop_back(arr, elem_ptr);                       \
-            } else if ((ix) < ln__) {                               \
-                if ((elem_ptr)) {                                   \
-                    memcpy((elem_ptr), &((arr)[darr_len(arr) - 1]), \
-                           sizeof(*(arr)));                         \
-                }                                                   \
-                _darr_set_len((arr), ln__ - 1);                     \
-                memmove((arr) + (ix), (arr) + (ix) + 1,             \
-                        sizeof(*(arr)) * (ln__ - 1 - (ix)));        \
-            }                                                       \
-        }                                                           \
+#define darr_remove(arr, ix, elem_ptr)                                                       \
+    do {                                                                                     \
+        if (arr) {                                                                           \
+            const size_t ln__ = darr_len(arr);                                               \
+            if ((ix) == ln__ - 1) {                                                          \
+                darr_pop_back(arr, elem_ptr);                                                \
+            } else if ((ix) < ln__) {                                                        \
+                if ((elem_ptr)) {                                                            \
+                    memcpy((elem_ptr), &((arr)[darr_len(arr) - 1]), sizeof(*(arr)));         \
+                }                                                                            \
+                _darr_set_len((arr), ln__ - 1);                                              \
+                memmove((arr) + (ix), (arr) + (ix) + 1, sizeof(*(arr)) * (ln__ - 1 - (ix))); \
+            }                                                                                \
+        }                                                                                    \
     } while (0)
 
 /**
@@ -269,22 +263,21 @@ typedef struct darr_meta_t {
  * @param capacity the new capacity to set
  * @return void
  */
-#define _darr_grow(arr, capacity)                                      \
-    do {                                                               \
-        const size_t darr_ln__ =                                       \
-            (capacity) * sizeof(*(arr)) + sizeof(darr_meta_t);         \
-        if ((arr)) {                                                   \
-            void *darr_p1__ = _darr_arr_to_meta(arr);                  \
-            void *darr_p2__ = darr_clib_realloc(darr_p1__, darr_ln__); \
-            assert(darr_p2__);                                         \
-            (arr) = _darr_meta_to_arr(darr_p2__);                      \
-        } else {                                                       \
-            void *darr_p__ = darr_clib_malloc(darr_ln__);              \
-            assert(darr_p__);                                          \
-            (arr) = _darr_meta_to_arr(darr_p__);                       \
-            _darr_set_len((arr), 0);                                   \
-        }                                                              \
-        _darr_set_capacity((arr), (capacity));                         \
+#define _darr_grow(arr, capacity)                                                   \
+    do {                                                                            \
+        const size_t darr_ln__ = (capacity) * sizeof(*(arr)) + sizeof(darr_meta_t); \
+        if ((arr)) {                                                                \
+            void *darr_p1__ = _darr_arr_to_meta(arr);                               \
+            void *darr_p2__ = darr_clib_realloc(darr_p1__, darr_ln__);              \
+            assert(darr_p2__);                                                      \
+            (arr) = _darr_meta_to_arr(darr_p2__);                                   \
+        } else {                                                                    \
+            void *darr_p__ = darr_clib_malloc(darr_ln__);                           \
+            assert(darr_p__);                                                       \
+            (arr) = _darr_meta_to_arr(darr_p__);                                    \
+            _darr_set_len((arr), 0);                                                \
+        }                                                                           \
+        _darr_set_capacity((arr), (capacity));                                      \
     } while (0)
 
 #endif /* DARRAY_H_ */
