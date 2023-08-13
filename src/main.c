@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "../include/fxarray.h"
+#include "fxarray.h"
 
 #define CELL_PRINT_WIDTH 20
 #define WITH_TYPE false
