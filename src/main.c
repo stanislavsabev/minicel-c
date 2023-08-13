@@ -20,7 +20,7 @@ typedef enum EvalState {
 typedef struct Expr {
     char* str;
     float value;
-    EvalState state;   // index from the expr_states array
+    EvalState eval_state;   // index from the expr_states array
 } Expr;
 
 typedef enum ValueType {
@@ -52,17 +52,13 @@ typedef struct Table {
     Expr* exprs;
 } Table;
 
-
-void print_horizontal_line(size_t cell_width, size_t ncols){
+void print_horizontal_line(size_t cell_width, size_t ncols) {
     size_t repetitions = cell_width * ncols + ncols + 1;
-    for (size_t i = 0; i < repetitions; i++)
-    {
+    for (size_t i = 0; i < repetitions; i++) {
         fprintf(stdout, "-");
     }
     fprintf(stdout, "\n");
-
 }
-
 
 /// @brief TODO: Finish implementation
 /// @param tbl - table with cells
@@ -98,7 +94,7 @@ int read_table(Table* tbl) {
                 snprintf(expr_str, sizeof(expr_str), "=%c2+%c3", ch, ch);
                 // fprintf(stdout, "%s\n",
                 //         expr_str);   // Print the formatted string
-                Expr expr = {.str = expr_str, .state = EVAL_STATE_NOT_STARTED, .value = 0};
+                Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
                 size_t expr_ndx = fxarr_len(exprs);
 
                 cell.value_as.expr_ndx = expr_ndx;
@@ -174,10 +170,16 @@ void print_table(Table* tbl) {
                 cell.value_type == VALUE_TYPE_ERR) {
                 int padding = (cell_width - ln) / 2;
                 fprintf(stdout, "%*s%s%*s", padding, "", cell_str, padding, "");
-            } else if (r > 0 && (cell.value_type == VALUE_TYPE_TEXT ||
-                                 cell.value_type == VALUE_TYPE_EXPR)) {
+            } else if (r > 0 && cell.value_type == VALUE_TYPE_TEXT) {
                 int rpadding = cell_width - ln - 1;
                 fprintf(stdout, "%s%*s", cell_str, rpadding, "");
+            } else if (r > 0 && cell.value_type == VALUE_TYPE_EXPR) {
+                int rpadding = cell_width - ln - 1;
+                fprintf(stdout, "%s%*s", cell_str, rpadding, "");
+                Expr exp = tbl->exprs[cell.value_as.expr_ndx];
+                if(exp.eval_state == EVAL_STATE_EVALUATED){
+                    fprintf(stdout, " (%.2f)", exp.value);
+                }
             } else if (cell.value_type == VALUE_TYPE_NUMBER) {
                 int lpadding = cell_width - ln - 1;
                 fprintf(stdout, "%*s%s", lpadding, "", cell_str);
