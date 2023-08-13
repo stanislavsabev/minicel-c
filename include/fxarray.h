@@ -1,72 +1,72 @@
 
-#ifndef DARRAY_H_
-#define DARRAY_H_
+#ifndef FX_FXARRAY_H_
+#define FX_FXARRAY_H_
 
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef darr_clib_free
-#define darr_clib_free free
+#ifndef fxarr_clib_free
+#define fxarr_clib_free free
 #endif
-#ifndef darr_clib_malloc
-#define darr_clib_malloc malloc
+#ifndef fxarr_clib_malloc
+#define fxarr_clib_malloc malloc
 #endif
-#ifndef darr_clib_calloc
-#define darr_clib_calloc calloc
+#ifndef fxarr_clib_calloc
+#define fxarr_clib_calloc calloc
 #endif
-#ifndef darr_clib_realloc
-#define darr_clib_realloc realloc
+#ifndef fxarr_clib_realloc
+#define fxarr_clib_realloc realloc
 #endif
 
-#define DARR_INITIAL_CAPACITY_ 8
+#define FXARR_INITIAL_CAPACITY_ 8
 
-typedef struct darr_meta_t {
+typedef struct fxarr_meta_t {
     size_t length;
     size_t capacity;
-} darr_meta_t;
+} fxarr_meta_t;
 
 /**
  * @brief Declare the array type to be used.
- * @example darr_type(Point) points = NULL;
+ * @example fxarr_type(Point) points = NULL;
  */
-#define darr_type(type) type *
+#define fxarr_type(type) type *
 
 /**
- * @brief For internal use, converts an array pointer to darr_meta_t
+ * @brief For internal use, converts an array pointer to fxarr_meta_t
  * pointer. pointer
  * @param arr the array
- * @return darr_meta_t * - pointer to the array meta data
+ * @return fxarr_meta_t * - pointer to the array meta data
  */
-#define _darr_arr_to_meta(arr) (&((darr_meta_t *)(arr))[-1])
+#define _fxarr_arr_to_meta(arr) (&((fxarr_meta_t *)(arr))[-1])
 
 /**
- * @brief For internal use, converts darr_meta_t pointer to array pointer.
- * @param ptr pointer to the darr_meta_t struct
+ * @brief For internal use, converts fxarr_meta_t pointer to array pointer.
+ * @param ptr pointer to the fxarr_meta_t struct
  * @return pointer to the array
  */
-#define _darr_meta_to_arr(ptr) ((void *)&((darr_meta_t *)(ptr))[1])
+#define _fxarr_meta_to_arr(ptr) ((void *)&((fxarr_meta_t *)(ptr))[1])
 
 /**
  * @brief Gets current capacity of the array.
  * @param arr the array
  * @return size_t - the array capacity
  */
-#define darr_capacity(arr) ((arr) ? _darr_arr_to_meta(arr)->capacity : (size_t)0)
+#define fxarr_capacity(arr) ((arr) ? _fxarr_arr_to_meta(arr)->capacity : (size_t)0)
 
 /**
  * @brief Gets the current length of the array.
  * @param arr the array
  * @return size_t - the array length
  */
-#define darr_len(arr) ((arr) ? _darr_arr_to_meta(arr)->length : (size_t)0)
+#define fxarr_len(arr) ((arr) ? _fxarr_arr_to_meta(arr)->length : (size_t)0)
 
 /**
  * @brief Returns non-zero if the array is empty.
  * @param arr the array
  * @return size_t - non-zero if empty, zero if non-empty
  */
-#define darr_is_empty(arr) (darr_len(arr) == 0)
+#define fxarr_is_empty(arr) (fxarr_len(arr) == 0)
 
 /**
  * @brief Grows the array to be at least <capacity> elements big.
@@ -76,11 +76,11 @@ typedef struct darr_meta_t {
  * @param capacity size_t - minimum capacity for the array.
  * @return void
  */
-#define darr_reserve(arr, capacity)             \
+#define fxarr_reserve(arr, capacity)             \
     do {                                        \
-        size_t darr_cap__ = darr_capacity(arr); \
-        if (darr_cap__ < (capacity)) {          \
-            _darr_grow((arr), (capacity));      \
+        size_t fxarr_cap__ = fxarr_capacity(arr); \
+        if (fxarr_cap__ < (capacity)) {          \
+            _fxarr_grow((arr), (capacity));      \
         }                                       \
     } while (0)
 
@@ -89,10 +89,10 @@ typedef struct darr_meta_t {
  * @param arr the array
  * @return void
  */
-#define darr_clear(arr)            \
+#define fxarr_clear(arr)            \
     do {                           \
         if (arr) {                 \
-            _darr_set_len(arr, 0); \
+            _fxarr_set_len(arr, 0); \
         }                          \
     } while (0)
 
@@ -102,11 +102,11 @@ typedef struct darr_meta_t {
  * @param arr the array
  * @return void
  */
-#define darr_free(arr)                           \
+#define fxarr_free(arr)                           \
     do {                                         \
         if (arr) {                               \
-            void *p1__ = _darr_arr_to_meta(arr); \
-            darr_clib_free(p1__);                \
+            void *p1__ = _fxarr_arr_to_meta(arr); \
+            fxarr_clib_free(p1__);                \
         }                                        \
     } while (0)
 
@@ -115,7 +115,7 @@ typedef struct darr_meta_t {
  * @param arr the array
  * @return pointer to the first element or NULL
  */
-#define darr_begin(arr) (arr)
+#define fxarr_begin(arr) (arr)
 
 /**
  * @brief Returns an iterator to one past the last element
@@ -123,7 +123,7 @@ typedef struct darr_meta_t {
  * @param arr the array
  * @return pointer to one past the last element or NULL
  */
-#define darr_end(arr) ((arr) ? &((arr)[darr_len(arr)]) : NULL)
+#define fxarr_end(arr) ((arr) ? &((arr)[fxarr_len(arr)]) : NULL)
 
 /**
  * @brief Returns an iterator to the last element
@@ -131,7 +131,7 @@ typedef struct darr_meta_t {
  * @param arr the array
  * @return pointer to the last element or NULL
  */
-#define darr_back(arr) ((arr) ? &((arr)[darr_len(arr) - 1]) : NULL)
+#define fxarr_back(arr) ((arr) ? &((arr)[fxarr_len(arr) - 1]) : NULL)
 
 /**
  * @brief Computes the capacity of the next grow.
@@ -139,7 +139,7 @@ typedef struct darr_meta_t {
  * @param capacity current capacity
  * @return size_t - capacity after next grow
  */
-#define darr_compute_next_grow(capacity) ((capacity) ? ((capacity)*2) : DARR_INITIAL_CAPACITY_)
+#define fxarr_compute_next_grow(capacity) ((capacity) ? ((capacity)*2) : FXARR_INITIAL_CAPACITY_)
 
 /**
  * @brief Adds an element to the end of the array.
@@ -147,14 +147,14 @@ typedef struct darr_meta_t {
  * @param value the value to add
  * @return void
  */
-#define darr_append(arr, value)                                    \
+#define fxarr_append(arr, value)                                    \
     do {                                                           \
-        size_t darr_cap__ = darr_capacity(arr);                    \
-        if (darr_cap__ <= darr_len(arr)) {                         \
-            _darr_grow((arr), darr_compute_next_grow(darr_cap__)); \
+        size_t fxarr_cap__ = fxarr_capacity(arr);                    \
+        if (fxarr_cap__ <= fxarr_len(arr)) {                         \
+            _fxarr_grow((arr), fxarr_compute_next_grow(fxarr_cap__)); \
         }                                                          \
-        (arr)[darr_len(arr)] = (value);                            \
-        _darr_set_len((arr), darr_len(arr) + 1);                   \
+        (arr)[fxarr_len(arr)] = (value);                            \
+        _fxarr_set_len((arr), fxarr_len(arr) + 1);                   \
     } while (0)
 
 /**
@@ -164,17 +164,17 @@ typedef struct darr_meta_t {
  * @param val value to be copied (or moved) to the inserted elements.
  * @return void
  */
-#define darr_insert(arr, ix, val)                                                               \
+#define fxarr_insert(arr, ix, val)                                                               \
     do {                                                                                        \
-        size_t darr_cap__ = darr_capacity(arr);                                                 \
-        if (darr_cap__ <= darr_len(arr)) {                                                      \
-            _darr_grow((arr), darr_compute_next_grow(darr_cap__));                              \
+        size_t fxarr_cap__ = fxarr_capacity(arr);                                                 \
+        if (fxarr_cap__ <= fxarr_len(arr)) {                                                      \
+            _fxarr_grow((arr), fxarr_compute_next_grow(fxarr_cap__));                              \
         }                                                                                       \
-        if ((ix) < darr_len(arr)) {                                                             \
-            memmove((arr) + (ix) + 1, (arr) + (ix), sizeof(*(arr)) * ((darr_len(arr)) - (ix))); \
+        if ((ix) < fxarr_len(arr)) {                                                             \
+            memmove((arr) + (ix) + 1, (arr) + (ix), sizeof(*(arr)) * ((fxarr_len(arr)) - (ix))); \
         }                                                                                       \
         (arr)[(ix)] = (val);                                                                    \
-        _darr_set_len((arr), darr_len(arr) + 1);                                                \
+        _fxarr_set_len((arr), fxarr_len(arr) + 1);                                                \
     } while (0)
 
 /**
@@ -184,12 +184,12 @@ typedef struct darr_meta_t {
  * @param elem_ptr pointer to receive the removed element
  * @return void
  */
-#define darr_pop_back(arr, elem_ptr)                                         \
+#define fxarr_pop_back(arr, elem_ptr)                                         \
     do {                                                                     \
         if ((elem_ptr)) {                                                    \
-            memcpy((elem_ptr), &((arr)[darr_len(arr) - 1]), sizeof(*(arr))); \
+            memcpy((elem_ptr), &((arr)[fxarr_len(arr) - 1]), sizeof(*(arr))); \
         }                                                                    \
-        _darr_set_len((arr), darr_len(arr) - 1);                             \
+        _fxarr_set_len((arr), fxarr_len(arr) - 1);                             \
     } while (0)
 
 /**
@@ -199,17 +199,17 @@ typedef struct darr_meta_t {
  * @param elem_ptr pointer to receive the removed element
  * @return void
  */
-#define darr_remove(arr, ix, elem_ptr)                                                       \
+#define fxarr_remove(arr, ix, elem_ptr)                                                       \
     do {                                                                                     \
         if (arr) {                                                                           \
-            const size_t ln__ = darr_len(arr);                                               \
+            const size_t ln__ = fxarr_len(arr);                                               \
             if ((ix) == ln__ - 1) {                                                          \
-                darr_pop_back(arr, elem_ptr);                                                \
+                fxarr_pop_back(arr, elem_ptr);                                                \
             } else if ((ix) < ln__) {                                                        \
                 if ((elem_ptr)) {                                                            \
-                    memcpy((elem_ptr), &((arr)[darr_len(arr) - 1]), sizeof(*(arr)));         \
+                    memcpy((elem_ptr), &((arr)[fxarr_len(arr) - 1]), sizeof(*(arr)));         \
                 }                                                                            \
-                _darr_set_len((arr), ln__ - 1);                                              \
+                _fxarr_set_len((arr), ln__ - 1);                                              \
                 memmove((arr) + (ix), (arr) + (ix) + 1, sizeof(*(arr)) * (ln__ - 1 - (ix))); \
             }                                                                                \
         }                                                                                    \
@@ -221,12 +221,12 @@ typedef struct darr_meta_t {
  * @param dest the destination to copy to
  * @return void
  */
-#define darr_copy(src, dest)                                       \
+#define fxarr_copy(src, dest)                                       \
     do {                                                           \
         if ((src)) {                                               \
-            _darr_grow(dest, darr_len(src));                       \
-            _darr_set_len(dest, darr_len(src));                    \
-            memcpy((dest), (src), darr_len(src) * sizeof(*(src))); \
+            _fxarr_grow(dest, fxarr_len(src));                       \
+            _fxarr_set_len(dest, fxarr_len(src));                    \
+            memcpy((dest), (src), fxarr_len(src) * sizeof(*(src))); \
         }                                                          \
     } while (0)
 
@@ -236,10 +236,10 @@ typedef struct darr_meta_t {
  * @param capacity_ the new capacity to set
  * @return void
  */
-#define _darr_set_capacity(arr, capacity_)                  \
+#define _fxarr_set_capacity(arr, capacity_)                  \
     do {                                                    \
         if (arr) {                                          \
-            _darr_arr_to_meta(arr)->capacity = (capacity_); \
+            _fxarr_arr_to_meta(arr)->capacity = (capacity_); \
         }                                                   \
     } while (0)
 
@@ -249,10 +249,10 @@ typedef struct darr_meta_t {
  * @param len the new length to be set
  * @return void
  */
-#define _darr_set_len(arr, len)                     \
+#define _fxarr_set_len(arr, len)                     \
     do {                                            \
         if ((arr)) {                                \
-            _darr_arr_to_meta(arr)->length = (len); \
+            _fxarr_arr_to_meta(arr)->length = (len); \
         }                                           \
     } while (0)
 
@@ -263,21 +263,21 @@ typedef struct darr_meta_t {
  * @param capacity the new capacity to set
  * @return void
  */
-#define _darr_grow(arr, capacity)                                                   \
+#define _fxarr_grow(arr, capacity)                                                   \
     do {                                                                            \
-        const size_t darr_ln__ = (capacity) * sizeof(*(arr)) + sizeof(darr_meta_t); \
+        const size_t fxarr_ln__ = (capacity) * sizeof(*(arr)) + sizeof(fxarr_meta_t); \
         if ((arr)) {                                                                \
-            void *darr_p1__ = _darr_arr_to_meta(arr);                               \
-            void *darr_p2__ = darr_clib_realloc(darr_p1__, darr_ln__);              \
-            assert(darr_p2__);                                                      \
-            (arr) = _darr_meta_to_arr(darr_p2__);                                   \
+            void *fxarr_p1__ = _fxarr_arr_to_meta(arr);                               \
+            void *fxarr_p2__ = fxarr_clib_realloc(fxarr_p1__, fxarr_ln__);              \
+            assert(fxarr_p2__);                                                      \
+            (arr) = _fxarr_meta_to_arr(fxarr_p2__);                                   \
         } else {                                                                    \
-            void *darr_p__ = darr_clib_malloc(darr_ln__);                           \
-            assert(darr_p__);                                                       \
-            (arr) = _darr_meta_to_arr(darr_p__);                                    \
-            _darr_set_len((arr), 0);                                                \
+            void *fxarr_p__ = fxarr_clib_malloc(fxarr_ln__);                           \
+            assert(fxarr_p__);                                                       \
+            (arr) = _fxarr_meta_to_arr(fxarr_p__);                                    \
+            _fxarr_set_len((arr), 0);                                                \
         }                                                                           \
-        _darr_set_capacity((arr), (capacity));                                      \
+        _fxarr_set_capacity((arr), (capacity));                                      \
     } while (0)
 
-#endif /* DARRAY_H_ */
+#endif /* FX_FXARRAY_H_ */

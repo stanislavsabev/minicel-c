@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "darray.h"
+#include "../include/fxarray.h"
 
 #define CELL_PRINT_WIDTH 20
 #define WITH_TYPE false
@@ -72,9 +72,9 @@ int read_table(Table* tbl) {
     size_t row_count = tbl->nrows = 4;
     size_t col_count = tbl->ncols = 3;
 
-    darr_type(Cell) cells = NULL;
-    darr_type(Expr) exprs = NULL;
-    darr_reserve(cells, row_count * col_count);
+    fxarr_type(Cell) cells = NULL;
+    fxarr_type(Expr) exprs = NULL;
+    fxarr_reserve(cells, row_count * col_count);
 
     for (size_t row = 0; row < row_count; row++) {
         for (size_t col = 0; col < col_count; col++) {
@@ -99,21 +99,21 @@ int read_table(Table* tbl) {
                 // fprintf(stdout, "%s\n",
                 //         expr_str);   // Print the formatted string
                 Expr expr = {.str = expr_str, .state = EVAL_STATE_NOT_STARTED, .value = 0};
-                size_t expr_ndx = darr_len(exprs);
+                size_t expr_ndx = fxarr_len(exprs);
 
                 cell.value_as.expr_ndx = expr_ndx;
                 cell.value_type = VALUE_TYPE_EXPR;
                 // fprintf(stdout, "expr_ndx: %lu\n", expr_ndx);
-                darr_append(exprs, expr);
+                fxarr_append(exprs, expr);
             }
-            darr_append(cells, cell);
+            fxarr_append(cells, cell);
         }
     }
 
     tbl->cells = cells;
     tbl->exprs = exprs;
-    // size_t ln_cells = darr_len(cells);
-    // size_t ln_exprs = darr_len(exprs);
+    // size_t ln_cells = fxarr_len(cells);
+    // size_t ln_exprs = fxarr_len(exprs);
     // fprintf(stdout, "cells at: %p, ln: %lu\n", cells, ln_cells);
     // fprintf(stdout, "exprs at: %p, ln: %lu\n", exprs, ln_exprs);
     return 0;
@@ -196,14 +196,14 @@ int main(int argc, char const* argv[]) {
     Table tbl = {0};
     read_table(&tbl);
 
-    // size_t ln_cells = darr_len(tbl.cells);
-    // size_t ln_exprs = darr_len(tbl.exprs);
+    // size_t ln_cells = fxarr_len(tbl.cells);
+    // size_t ln_exprs = fxarr_len(tbl.exprs);
     // fprintf(stdout, "cells at: %p, ln: %lu\n", tbl.cells, ln_cells);
     // fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl.exprs, ln_exprs);
 
     print_table(&tbl);
 
-    darr_free(tbl.cells);
-    darr_free(tbl.exprs);
+    fxarr_free(tbl.cells);
+    fxarr_free(tbl.exprs);
     return 0;
 }

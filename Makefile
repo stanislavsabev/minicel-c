@@ -2,51 +2,60 @@ CC=clang
 STD=-std=c17
 CFLAGS=-Wall -Wextra -g $(STD)
 
-SRC=src
-OBJ=obj
-BIN=bin
-TARGET=main
+# Directories
+SRC_DIR = ./src
+INC_DIR = ./include
+LIB_DIR = ./lib
+OBJ_DIR = ./obj
+BIN_DIR = ./bin
 
-SRCS=$(wildcard $(SRC)/*.c)
-HSRCS=$(wildcard $(SRC)/*.h)
-OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
+# Libraries
+FXLIB_DIR = $(PROJECTS_DIR)/fx-c
+FXLIB = fxlib.a
 
-.PHONY: all
+# Target name
+TARGET = main
+
+SRCS=$(wildcard $(SRC_DIR)/*.c)
+HSRCS=$(wildcard $(SRC_DIR)/*.h)
+OBJS=$(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
+
 all: build
 
-.PHONY: help
 help: ## Show this message
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-.PHONY: dirs
-dirs: ## Create build directories
-	@mkdir -p $(OBJ) $(BIN)
+makedirs: ## Create build directories
+	@mkdir -p $(INC_DIR) $(LIB_DIR) $(OBJ_DIR) $(BIN_DIR)
 
-$(OBJ)/%.o: $(SRC)/%.c
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $^ -o $@
 
 $(TARGET): $(OBJS) $(HSRCS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(BIN)/$(TARGET)
+	$(CC) $(CFLAGS) $(OBJS) -o $(BIN_DIR)/$(TARGET) -I$(INC_DIR) -L$(LIB_DIR) -l:$(FXLIB)
 
-.PHONY: build
-build: dirs Makefile $(TARGET) ## Build target
+build: makedirs source_libs Makefile $(TARGET) ## Build target
 
-.PHONY: rebuild
 rebuild: clean build ## Cleanup and build target
 
-.PHONY: run
 run: $(TARGET) ## Run target
-	./$(BIN)/$(TARGET)
+	./$(BIN_DIR)/$(TARGET)
 
-.PHONY: clean ## Clean up build directories
-clean: ## Clean up
-	$(RM) $(OBJ)/* $(BIN)/*
+clean: ## Clean up build directories
+	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/*
 
-.PHONY: release
 release: CFLAGS=-Wall $(STD) -O2 -DNDEBUG
 release: clean
-release: $(TARGET)
+release: $(TARGET) ## Build release
 
-.PHONY: check
-check:
-	@valgrind --undef-value-errors=no  ./$(BIN)/$(TARGET)
+
+check: ## Run valgrind sanitizer
+	@valgrind --undef-value-errors=no  ./$(BIN_DIR)/$(TARGET)
+
+
+source_libs: ## Source external libraries
+	@cp -fr $(FXLIB_DIR)/include/* $(INC_DIR)
+	@cp -fr $(FXLIB_DIR)/lib/* $(LIB_DIR)
+
+
+.PHONY: help makedirs clean run check build rebuild release source_libs
