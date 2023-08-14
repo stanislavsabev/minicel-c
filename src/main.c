@@ -23,7 +23,7 @@ typedef struct Expr {
     EvalState eval_state;   // index from the expr_states array
 } Expr;
 
-typedef enum ValueType {
+typedef enum {
     VALUE_TYPE_EMPTY,
     VALUE_TYPE_NUMBER,
     VALUE_TYPE_TEXT,
@@ -32,7 +32,7 @@ typedef enum ValueType {
     VALUE_TYPE_COUNT,
 } ValueType;
 
-typedef union Value {
+typedef union {
     char* str;
     float number;
     size_t expr_ndx;   // index from the expressions array
@@ -45,7 +45,7 @@ typedef struct {
     ValueType value_type;
 } Cell;
 
-typedef struct Table {
+typedef struct {
     size_t nrows;
     size_t ncols;
     Cell* cells;
@@ -60,6 +60,54 @@ void print_horizontal_line(size_t cell_width, size_t ncols) {
     fprintf(stdout, "\n");
 }
 
+Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
+    Cell cell = {.row = row, .col = col};
+    char ch = 'A' + col;
+
+    if (row == 0) {
+        // Header cells
+        size_t len = 4;
+        size_t sz = len * sizeof(char);
+        char* header = malloc(sz);
+        snprintf(header, sz, "%c", ch);
+
+#if defined(DEBUG)
+        fprintf(stdout, "\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
+#endif   // DEBUG
+
+        cell.value_type = VALUE_TYPE_TEXT;
+        cell.value_as.str = header;
+    } else if (row < row_count - 1) {
+        // Number cells
+        float number = (float)(row * 2 + col);
+        cell.value_as.number = number;
+        cell.value_type = VALUE_TYPE_NUMBER;
+    } else {
+        // Expr cells
+        size_t len = 64;
+        size_t sz = len * sizeof(char);
+        char* expr_str = malloc(sz);
+        snprintf(expr_str, sz, "=%c2+%c3", ch, ch);
+        // fprintf(stdout, "%s\n",
+        //         expr_str);   // Print the formatted string
+        Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
+        size_t expr_ndx = fxarr_len(tbl->exprs);
+
+        cell.value_as.expr_ndx = expr_ndx;
+        cell.value_type = VALUE_TYPE_EXPR;
+        // fprintf(stdout, "expr_ndx: %lu\n", expr_ndx);
+        fxarr_append(tbl->exprs, expr);
+
+#if defined(DEBUG)
+        size_t ln_exprs = fxarr_len(tbl->exprs);
+        fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, ln_exprs);
+
+#endif   // DEBUG
+
+    }
+    return cell;
+}
+
 /// @brief TODO: Finish implementation
 /// @param tbl - table with cells
 /// @param exprs - array with expressions
@@ -69,58 +117,35 @@ int read_table(Table* tbl) {
     size_t col_count = tbl->ncols = 3;
 
     fxarr_type(Cell) cells = NULL;
+    // fxarr_reserve(cells, row_count * col_count);
+
     fxarr_type(Expr) exprs = NULL;
-    fxarr_reserve(cells, row_count * col_count);
+    // fxarr_reserve(exprs, 3);
+    tbl->cells = cells;
+    tbl->exprs = exprs;
+#if defined(DEBUG)
+    fprintf(stdout, "cells p == %p, tbl.cells %p, same: %d\n", cells, tbl->cells,
+            cells == tbl->cells);
+    fprintf(stdout, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs,
+            exprs == tbl->exprs);
+
+#endif   // DEBUG
 
     for (size_t row = 0; row < row_count; row++) {
         for (size_t col = 0; col < col_count; col++) {
-            Cell cell = {.row = row, .col = col};
-            char ch = 'A' + col;
-
-            if (row == 0) {
-                // Header cells
-                size_t len = 4;
-                size_t sz = len * sizeof(char);
-                char* header = malloc(sz);
-                snprintf(header, sz, "%c", ch);
-
-#if defined(DEBUG)
-                fprintf(stdout, "\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
-#endif // DEBUG
-
-                cell.value_type = VALUE_TYPE_TEXT;
-                cell.value_as.str = header;
-            } else if (row < row_count - 1) {
-                // Number cells
-                float number = (float)(row * 2 + col);
-                cell.value_as.number = number;
-                cell.value_type = VALUE_TYPE_NUMBER;
-            } else {
-                // Expr cells
-                size_t len = 64;
-                size_t sz = len * sizeof(char);
-                char* expr_str = malloc(sz);
-                snprintf(expr_str, sz, "=%c2+%c3", ch, ch);
-                // fprintf(stdout, "%s\n",
-                //         expr_str);   // Print the formatted string
-                Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
-                size_t expr_ndx = fxarr_len(exprs);
-
-                cell.value_as.expr_ndx = expr_ndx;
-                cell.value_type = VALUE_TYPE_EXPR;
-                // fprintf(stdout, "expr_ndx: %lu\n", expr_ndx);
-                fxarr_append(exprs, expr);
-            }
-            fxarr_append(cells, cell);
+            Cell cell = create_cell(row, col, row_count, tbl);
+            fxarr_append(tbl->cells, cell);
         }
     }
 
-    tbl->cells = cells;
-    tbl->exprs = exprs;
-    // size_t ln_cells = fxarr_len(cells);
-    // size_t ln_exprs = fxarr_len(exprs);
-    // fprintf(stdout, "cells at: %p, ln: %lu\n", cells, ln_cells);
-    // fprintf(stdout, "exprs at: %p, ln: %lu\n", exprs, ln_exprs);
+#if defined(DEBUG)
+    fprintf(stdout, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs,
+            exprs == tbl->exprs);
+    size_t ln_cells = fxarr_len(tbl->cells);
+    fprintf(stdout, "cells at: %p, ln: %lu\n", tbl->cells, ln_cells);
+    size_t ln_exprs = fxarr_len(tbl->exprs);
+    fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, ln_exprs);
+#endif   // DEBUG
     return 0;
 }
 
@@ -188,7 +213,7 @@ void print_table(Table* tbl) {
                 int rpadding = cell_width - ln - 1;
                 fprintf(stdout, "%s%*s", cell_str, rpadding, "");
                 Expr exp = tbl->exprs[cell.value_as.expr_ndx];
-                if(exp.eval_state == EVAL_STATE_EVALUATED){
+                if (exp.eval_state == EVAL_STATE_EVALUATED) {
                     fprintf(stdout, " (%.2f)", exp.value);
                 }
             } else if (cell.value_type == VALUE_TYPE_NUMBER) {
@@ -209,11 +234,13 @@ int main(int argc, char const* argv[]) {
     Table tbl = {0};
     read_table(&tbl);
 
-    // size_t ln_cells = fxarr_len(tbl.cells);
-    // size_t ln_exprs = fxarr_len(tbl.exprs);
-    // fprintf(stdout, "cells at: %p, ln: %lu\n", tbl.cells, ln_cells);
-    // fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl.exprs, ln_exprs);
+#if defined(DEBUG)
+    size_t ln_cells = fxarr_len(tbl.cells);
+    size_t ln_exprs = fxarr_len(tbl.exprs);
+    fprintf(stdout, "cells at: %p, ln: %lu\n", tbl.cells, ln_cells);
+    fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl.exprs, ln_exprs);
 
+#endif   // DEBUG
     print_table(&tbl);
 
     fxarr_free(tbl.cells);
