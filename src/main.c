@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "fxarray.h"
+#include "fx/fxarray.h"
 
 #define CELL_PRINT_WIDTH 20
 #define WITH_TYPE false
@@ -79,8 +79,15 @@ int read_table(Table* tbl) {
 
             if (row == 0) {
                 // Header cells
-                char* header = malloc(sizeof(char) * 2);
-                snprintf(header, sizeof(header), "%c", ch);
+                size_t len = 4;
+                size_t sz = len * sizeof(char);
+                char* header = malloc(sz);
+                snprintf(header, sz, "%c", ch);
+
+#if defined(DEBUG)
+                fprintf(stdout, "\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
+#endif // DEBUG
+
                 cell.value_type = VALUE_TYPE_TEXT;
                 cell.value_as.str = header;
             } else if (row < row_count - 1) {
@@ -90,8 +97,10 @@ int read_table(Table* tbl) {
                 cell.value_type = VALUE_TYPE_NUMBER;
             } else {
                 // Expr cells
-                char* expr_str = malloc(sizeof(char) * 8);
-                snprintf(expr_str, sizeof(expr_str), "=%c2+%c3", ch, ch);
+                size_t len = 64;
+                size_t sz = len * sizeof(char);
+                char* expr_str = malloc(sz);
+                snprintf(expr_str, sz, "=%c2+%c3", ch, ch);
                 // fprintf(stdout, "%s\n",
                 //         expr_str);   // Print the formatted string
                 Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
@@ -146,8 +155,10 @@ int cell_strview(const Cell* cell, const Expr* exprs, const bool with_type, char
 /// @param cell table cell
 /// @returns char* with cell's address
 char* cell_rc_strview(const Cell* cell) {
-    char* buff = malloc(16 * sizeof(char));
-    snprintf(buff, sizeof(buff), "CELL(%lu, %lu)", cell->row, cell->col);
+    size_t sz = 64 * sizeof(char);
+    char* buff = malloc(sz);
+    snprintf(buff, sz, "CELL(%lu, %lu)", cell->row, cell->col);
+    fprintf(stdout, "\nsz: %lu vs sizeof(buff): %lu\n", sz, sizeof(buff));
     return buff;
 }
 
