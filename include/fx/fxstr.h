@@ -1,5 +1,5 @@
-#if !defined(FX_FXSTRING_H_)
-#define FX_FXSTRING_H_
+#if !defined(FX_FXSTR_H_)
+#define FX_FXSTR_H_
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -46,6 +46,6 @@ typedef struct {
  * @param s string to trim
  * @returns trimmed fxstr
  */
-fxstr fxstr_trim(fxstr* s);
+fxstr fxstr_trim(fxstr* s); 
 
-#endif   // FX_FXSTRING_H_
+#endif   // FX_FXSTR_H_

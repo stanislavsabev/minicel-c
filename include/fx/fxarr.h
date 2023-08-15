@@ -1,6 +1,6 @@
 
-#ifndef FX_FXARRAY_H_
-#define FX_FXARRAY_H_
+#ifndef FX_FXARR_H_
+#define FX_FXARR_H_
 
 #include <assert.h>
 #include <stdlib.h>
@@ -280,4 +280,4 @@ typedef struct fxarr_meta_t {
         _fxarr_set_capacity((arr), (capacity));                                      \
     } while (0)
 
-#endif /* FX_FXARRAY_H_ */
+#endif /* FX_FXARR_H_ */
