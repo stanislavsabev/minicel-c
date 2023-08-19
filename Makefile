@@ -1,7 +1,13 @@
 # Compiler Flags
 CC = gcc
 STD = -std=c17
-CFLAGS = -Wall -Wextra -g $(STD)
+CFLAGS = -Wall -Wextra 
+CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-parameter
+
+CFLAGS += $(STD)
+CFLAGS += -g
+
 RELEASE_CFLAGS = -Wall $(STD) -O2 -DNDEBUG
 DFLAGS = DEBUG
 
@@ -52,9 +58,11 @@ release: $(TARGET) ## Build release target
 rebuild: clean build ## Clean and rebuild target
 rb: rebuild
 
-run: build ## Run current target
+run: ## Run current target
 	./$(BIN_DIR)/$(TARGET)
 r: run
+rndb: ndb run
+rdb: db run
 
 clean: ## Clean up build directories
 	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/*
