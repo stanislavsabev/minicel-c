@@ -12,7 +12,7 @@
 #define WITH_TYPE false
 #define OPERATORS "-+"
 #define MAX_ROWS 1024
-#define MAX_COLUMNS 702 // ZZ
+#define MAX_COLUMNS 702   // ZZ
 
 typedef struct {
     size_t row;
@@ -250,6 +250,7 @@ typedef enum {
     TOKEN_TYPE_OPERATOR,
     TOKEN_TYPE_CELL_ADDRESS,
     TOKEN_TYPE_INVALID,
+    TOKEN_TYPE_EOF,
     TOKEN_TYPE_ENUM_COUNT,
 } TokenType;
 
@@ -258,6 +259,11 @@ typedef struct {
     size_t len;
     const char* s;
 } Token;
+
+#define EOF_TOKEN                                   \
+    (Token) {                                       \
+        .type = TOKEN_TYPE_EOF, .s = NULL, .len = 0 \
+    }
 
 bool is_operator(const char* ch) {
     return strchr(OPERATORS, *ch) != NULL;
@@ -295,7 +301,7 @@ Token number_token(const char* s, size_t len) {
             ++i;
         }
     }
-    
+
     token.len = i;
     token.s = s;
     token.type = TOKEN_TYPE_NUMBER;
@@ -327,6 +333,10 @@ Token cell_address_token(const char* s, size_t len) {
 
 Token get_next_token(const char* s, size_t len) {
     // number
+    if (!(len > 0)) {
+        return EOF_TOKEN;
+    }
+
     if (isdigit(*s)) {
         return number_token(s, len);
     }
@@ -361,40 +371,55 @@ Ast ast_default() {
     return ast;
 }
 
-Ast ast_cell_address(const char* s, size_t len) {
+Ast cell_address_ast(const char* s, size_t len) {
     // TODO: Start here!!!
 
     Ast ast = {0};
     size_t col = 0;
     size_t row = 0;
     size_t i = 0;
-    size_t token_len = 0;
-    
-    while (s[i] >= 'A' && s[i] <= 'Z' && token_len < len) {
+
+    while (s[i] >= 'A' && s[i] <= 'Z' && i < len) {
         col = col * 26 + (s[i] - 'A' + 1);
         ++i;
     }
-    if(MAX_COLUMNS < col){
+    if (MAX_COLUMNS < col) {
         fprintf(stderr, "Invalid column address %.*s. Max column address is 'ZZ'", (int)i, s);
         exit(EXIT_FAILURE);
     }
 
-    token_len = i;
+    len -= i;
     i = 0;
-    while (isdigit(s[i])) {
+    while (isdigit(s[i]) && i < len) {
         row = row * 10 + (s[i] - '0');
         ++i;
     }
-    token_len += i;
-    
-    if(MAX_ROWS < row){
+
+    if (MAX_ROWS < row) {
         fprintf(stderr, "Invalid row address %.*s. Max row address is 'ZZ'", (int)i, s);
         exit(EXIT_FAILURE);
     }
-    
+
     ast.val_type = AST_VALUE_TYPE_ADDRESS_RC;
     ast.val_as->address_rc = (AddressRC){.row = row, .col = col};
     return ast;
+}
+
+typedef struct {
+    size_t len;
+    char* s;
+    bool has_next;
+    Token next;
+} Lexer;
+
+Token get_lookahead(Lexer* lexer) {
+    Token lookahead = lexer->next;
+    Token next = get_next_token(lexer->s, lexer->len);
+    lexer->has_next = next.len < lexer->len;
+    lexer->len -= next.len;
+    lexer->next = next;
+
+    return lookahead;
 }
 
 Ast parse_expression(const char* expr, size_t len) {
@@ -409,62 +434,63 @@ Ast parse_expression(const char* expr, size_t len) {
     fxarr_reserve(tmp_cstr, len);
 
     dbfprintf(stderr, "address of and s: %p\n", &s);
-
     Token lookahead = get_next_token(s, len);
-    dbfprintf(stderr, "lookahead: %.*s\n", (int)lookahead.len, lookahead.s);
-    s = s + lookahead.len;
 
-    switch (lookahead.type) {
-        // Parse Unary Expr
-        case TOKEN_TYPE_OPERATOR: {
-            char op = *lookahead.s;
-            Ast rhs = parse_expression(s, end - s);
-            s = s + lookahead.len;
-            UnaryAst u_ast = {.operator= op, .rhs = rhs};
+    while (lookahead.type != TOKEN_TYPE_EOF) {
+        Token token = lookahead;
+        s = s + token.len;
+        len -= token.len;
+        lookahead = get_next_token(s, len);
+        dbfprintf(stderr, "lookahead: %.*s\n", (int)lookahead.len, lookahead.s);
 
-            ast.val_type = AST_VALUE_TYPE_UNARY;
-            ast.val_as->unary = u_ast;
-            break;
-        }
-        case TOKEN_TYPE_NUMBER: {
-            // Parse number
-            strncpy(tmp_cstr, lookahead.s, lookahead.len);
-            tmp_cstr[lookahead.len] = '\0';
-            double number = strtod(tmp_cstr, NULL);
-
-            // No next token - return the number
-            if (s == end) {
-                ast.val_type = AST_VALUE_TYPE_NUMBER;
-                ast.val_as->number = number;
-                return ast;
+        switch (token.type) {
+            // Parse Unary Expr
+            case TOKEN_TYPE_OPERATOR: {
+                char op = *token.s;
+                Ast rhs = parse_expression(s, len);
+                UnaryAst u_ast = {.operator= op, .rhs = rhs};
+                ast.val_type = AST_VALUE_TYPE_UNARY;
+                ast.val_as->unary = u_ast;
+                break;
             }
+            case TOKEN_TYPE_NUMBER: {
+                // Parse number
+                strncpy(tmp_cstr, token.s, token.len);
+                tmp_cstr[token.len] = '\0';
+                double number = strtod(tmp_cstr, NULL);
 
-            // Parse Binary Expr
-            lookahead = get_next_token(s, len);
-            s = s + lookahead.len;
-            if (!(lookahead.type == TOKEN_TYPE_OPERATOR)) {
-                fprintf(stderr, "Unknown token type %.*s. Expected operator.\n",
-                        (int)lookahead.len, lookahead.s);
+                // No next token - return the number
+                if (lookahead.type == TOKEN_TYPE_EOF) {
+                    ast.val_type = AST_VALUE_TYPE_NUMBER;
+                    ast.val_as->number = number;
+                    return ast;
+                }
+
+                // Parse Binary Expr
+                if (!(lookahead.type == TOKEN_TYPE_OPERATOR)) {
+                    fprintf(stderr, "Unknown token type %.*s. Expected operator.\n",
+                            (int)lookahead.len, lookahead.s);
+                }
+                Ast lhs = ast_default();
+                lhs.val_type = AST_VALUE_TYPE_NUMBER;
+                lhs.val_as->number = number;
+                Ast rhs = parse_expression(s, len);
+                BinaryAst b_ast = {.operator= * lookahead.s, .lhs = lhs, .rhs = rhs};
+                ast.val_type = AST_VALUE_TYPE_BINARY;
+                ast.val_as->binary = b_ast;
+                break;
             }
-            Ast lhs = ast_default();
-            lhs.val_type = AST_VALUE_TYPE_NUMBER;
-            lhs.val_as->number = number;
-            Ast rhs = parse_expression(s, end - s);
-            BinaryAst b_ast = {.operator= * lookahead.s, .lhs = lhs, .rhs = rhs};
+            // Parse Address
+            case TOKEN_TYPE_CELL_ADDRESS:
+                Ast cell_addres = cell_address_ast(s, end - s);
+                break;
 
-            ast.val_type = AST_VALUE_TYPE_BINARY;
-            ast.val_as->binary = b_ast;
-            break;
+            default:
+                fprintf(stderr, "Unknown token type %.*s\n", (int)lookahead.len, lookahead.s);
+                break;
         }
-        // Parse Address
-        case TOKEN_TYPE_CELL_ADDRESS:
-            Ast cell_addres = ast_cell_address(s, end - s);
-            break;
-
-        default:
-            fprintf(stderr, "Unknown token type %.*s\n", (int)lookahead.len, lookahead.s);
-            break;
     }
+
     return ast;
 }
 
