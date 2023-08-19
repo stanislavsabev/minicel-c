@@ -1,17 +1,25 @@
+#include <ctype.h>
+#include <locale.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "fx/fxarray.h"
+#include "fx/fxarr.h"
+#include "fx/fxutil.h"
 
 #define CELL_PRINT_WIDTH 20
 #define WITH_TYPE false
+#define OPERATORS "-+"
+#define MAX_ROWS 1024
+#define MAX_COLUMNS 702 // ZZ
 
-typedef struct Address {
+typedef struct {
     size_t row;
     size_t col;
-} Address;
+} AddressRC;
 
-typedef enum EvalState {
+typedef enum {
     EVAL_STATE_NOT_STARTED,
     EVAL_STATE_IN_PROGRESS,
     EVAL_STATE_EVALUATED,
@@ -19,7 +27,7 @@ typedef enum EvalState {
 
 typedef struct Expr {
     char* str;
-    float value;
+    double value;
     EvalState eval_state;   // index from the expr_states array
 } Expr;
 
@@ -29,12 +37,12 @@ typedef enum {
     VALUE_TYPE_TEXT,
     VALUE_TYPE_EXPR,
     VALUE_TYPE_ERR,
-    VALUE_TYPE_COUNT,
+    VALUE_TYPE_ENUM_COUNT,
 } ValueType;
 
 typedef union {
     char* str;
-    float number;
+    double number;
     size_t expr_ndx;   // index from the expressions array
 } Value;
 
@@ -71,15 +79,13 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
         char* header = malloc(sz);
         snprintf(header, sz, "%c", ch);
 
-#if defined(DEBUG)
-        fprintf(stdout, "\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
-#endif   // DEBUG
+        dbprintf("\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
 
         cell.value_type = VALUE_TYPE_TEXT;
         cell.value_as.str = header;
     } else if (row < row_count - 1) {
         // Number cells
-        float number = (float)(row * 2 + col);
+        double number = (double)(row * 2 + col);
         cell.value_as.number = number;
         cell.value_type = VALUE_TYPE_NUMBER;
     } else {
@@ -87,23 +93,15 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
         size_t len = 64;
         size_t sz = len * sizeof(char);
         char* expr_str = malloc(sz);
-        snprintf(expr_str, sz, "=%c2+%c3", ch, ch);
-        // fprintf(stdout, "%s\n",
-        //         expr_str);   // Print the formatted string
+        snprintf(expr_str, sz, "=%d.5+%c3", (int)(row + 2 + col), ch);
         Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
         size_t expr_ndx = fxarr_len(tbl->exprs);
 
         cell.value_as.expr_ndx = expr_ndx;
         cell.value_type = VALUE_TYPE_EXPR;
-        // fprintf(stdout, "expr_ndx: %lu\n", expr_ndx);
+
         fxarr_append(tbl->exprs, expr);
-
-#if defined(DEBUG)
-        size_t ln_exprs = fxarr_len(tbl->exprs);
-        fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, ln_exprs);
-
-#endif   // DEBUG
-
+        dbfprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
     }
     return cell;
 }
@@ -123,13 +121,6 @@ int read_table(Table* tbl) {
     // fxarr_reserve(exprs, 3);
     tbl->cells = cells;
     tbl->exprs = exprs;
-#if defined(DEBUG)
-    fprintf(stdout, "cells p == %p, tbl.cells %p, same: %d\n", cells, tbl->cells,
-            cells == tbl->cells);
-    fprintf(stdout, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs,
-            exprs == tbl->exprs);
-
-#endif   // DEBUG
 
     for (size_t row = 0; row < row_count; row++) {
         for (size_t col = 0; col < col_count; col++) {
@@ -138,14 +129,10 @@ int read_table(Table* tbl) {
         }
     }
 
-#if defined(DEBUG)
-    fprintf(stdout, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs,
-            exprs == tbl->exprs);
-    size_t ln_cells = fxarr_len(tbl->cells);
-    fprintf(stdout, "cells at: %p, ln: %lu\n", tbl->cells, ln_cells);
-    size_t ln_exprs = fxarr_len(tbl->exprs);
-    fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, ln_exprs);
-#endif   // DEBUG
+    dbfprintf(stderr, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs,
+              exprs == tbl->exprs);
+    dbfprintf(stderr, "cells at: %p, ln: %lu\n", tbl->cells, fxarr_len(tbl->cells));
+    dbfprintf(stderr, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
     return 0;
 }
 
@@ -183,7 +170,7 @@ char* cell_rc_strview(const Cell* cell) {
     size_t sz = 64 * sizeof(char);
     char* buff = malloc(sz);
     snprintf(buff, sz, "CELL(%lu, %lu)", cell->row, cell->col);
-    fprintf(stdout, "\nsz: %lu vs sizeof(buff): %lu\n", sz, sizeof(buff));
+    dbfprintf(stdout, "\nsz: %lu vs sizeof(buff): %lu\n", sz, sizeof(buff));
     return buff;
 }
 
@@ -227,23 +214,310 @@ void print_table(Table* tbl) {
     }
 }
 
+typedef enum {
+    AST_VALUE_TYPE_NUMBER,
+    AST_VALUE_TYPE_ADDRESS_RC,
+    AST_VALUE_TYPE_UNARY,
+    AST_VALUE_TYPE_BINARY,
+} AstValueType;
+
+typedef union AstValue AstValue;
+typedef struct Ast {
+    AstValue* val_as;
+    AstValueType val_type;
+} Ast;
+
+typedef struct {
+    char operator;
+    Ast rhs;
+} UnaryAst;
+
+typedef struct {
+    char operator;
+    Ast lhs;
+    Ast rhs;
+} BinaryAst;
+
+typedef union AstValue {
+    double number;
+    AddressRC address_rc;
+    UnaryAst unary;
+    BinaryAst binary;
+} AstValue;
+
+typedef enum {
+    TOKEN_TYPE_NUMBER,
+    TOKEN_TYPE_OPERATOR,
+    TOKEN_TYPE_CELL_ADDRESS,
+    TOKEN_TYPE_INVALID,
+    TOKEN_TYPE_ENUM_COUNT,
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    size_t len;
+    const char* s;
+} Token;
+
+bool is_operator(const char* ch) {
+    return strchr(OPERATORS, *ch) != NULL;
+}
+
+bool is_column_address(const char* s, size_t len) {
+    return false;
+}
+bool is_row_address(const char* s, size_t len) {
+    return false;
+}
+
+char get_decimal_point() {
+    setlocale(LC_ALL, "");
+    struct lconv* lc = localeconv();
+    if (lc) {
+        return *lc->decimal_point;
+    }
+    return '.';
+}
+
+Token number_token(const char* s, size_t len) {
+    Token token = {0};
+    size_t i = 0;
+
+    while (isdigit(s[i]) && i < len) {
+        ++i;
+    }
+
+    // Set the locale based on the user's environment
+    char dec_point = get_decimal_point();
+    if (i < len && s[i] == dec_point) {
+        ++i;
+        while (isdigit(s[i]) && i < len) {
+            ++i;
+        }
+    }
+    
+    token.len = i;
+    token.s = s;
+    token.type = TOKEN_TYPE_NUMBER;
+    return token;
+}
+
+Token operator_token(const char* s, size_t len) {
+    return (Token){.s = s, .len = 1, .type = TOKEN_TYPE_OPERATOR};
+}
+
+Token cell_address_token(const char* s, size_t len) {
+    Token token = {0};
+    size_t i = 0;
+    while (s[i] >= 'A' && s[i] <= 'Z' && i < len) {
+        ++i;
+    }
+    if (!isdigit(s[i])) {
+        fprintf(stderr, "Invalid cell address token. Expected row number at pos %lu", i);
+        exit(EXIT_FAILURE);
+    }
+    while (isdigit(s[i])) {
+        ++i;
+    }
+    token.len = i;
+    token.s = s;
+    token.type = TOKEN_TYPE_CELL_ADDRESS;
+    return token;
+}
+
+Token get_next_token(const char* s, size_t len) {
+    // number
+    if (isdigit(*s)) {
+        return number_token(s, len);
+    }
+    // Address
+    if (*s >= 'A' && *s <= 'Z') {
+        return cell_address_token(s, len);
+    }
+    // Operator
+    if (is_operator(s)) {
+        return operator_token(s, len);
+    }
+
+    fprintf(stderr, "Unknown token. %.*s", (int)len, s);
+    return (Token){.type = TOKEN_TYPE_INVALID, .s = s, .len = len};
+}
+
+void consume(char* what, char** s) {
+    char* w = what;
+    char* sp = *s;
+
+    while (*w == *sp) {
+        dbfprintf(stderr, "consuming: %c\n", *w);
+        w++;
+        sp++;
+    }
+    *s = sp;
+}
+
+Ast ast_default() {
+    Ast ast = {0};
+    ast.val_as = calloc(1, sizeof(AstValue));
+    return ast;
+}
+
+Ast ast_cell_address(const char* s, size_t len) {
+    // TODO: Start here!!!
+
+    Ast ast = {0};
+    size_t col = 0;
+    size_t row = 0;
+    size_t i = 0;
+    size_t token_len = 0;
+    
+    while (s[i] >= 'A' && s[i] <= 'Z' && token_len < len) {
+        col = col * 26 + (s[i] - 'A' + 1);
+        ++i;
+    }
+    if(MAX_COLUMNS < col){
+        fprintf(stderr, "Invalid column address %.*s. Max column address is 'ZZ'", (int)i, s);
+        exit(EXIT_FAILURE);
+    }
+
+    token_len = i;
+    i = 0;
+    while (isdigit(s[i])) {
+        row = row * 10 + (s[i] - '0');
+        ++i;
+    }
+    token_len += i;
+    
+    if(MAX_ROWS < row){
+        fprintf(stderr, "Invalid row address %.*s. Max row address is 'ZZ'", (int)i, s);
+        exit(EXIT_FAILURE);
+    }
+    
+    ast.val_type = AST_VALUE_TYPE_ADDRESS_RC;
+    ast.val_as->address_rc = (AddressRC){.row = row, .col = col};
+    return ast;
+}
+
+Ast parse_expression(const char* expr, size_t len) {
+    char* s = (char*)expr;
+    dbfprintf(stderr, "address of expr and s: %p\n", &s);
+
+    const char* end = s + len;
+    Ast ast = ast_default();
+
+    // tmp str for conversions
+    fxarr_type(char) tmp_cstr = NULL;
+    fxarr_reserve(tmp_cstr, len);
+
+    dbfprintf(stderr, "address of and s: %p\n", &s);
+
+    Token lookahead = get_next_token(s, len);
+    dbfprintf(stderr, "lookahead: %.*s\n", (int)lookahead.len, lookahead.s);
+    s = s + lookahead.len;
+
+    switch (lookahead.type) {
+        // Parse Unary Expr
+        case TOKEN_TYPE_OPERATOR: {
+            char op = *lookahead.s;
+            Ast rhs = parse_expression(s, end - s);
+            s = s + lookahead.len;
+            UnaryAst u_ast = {.operator= op, .rhs = rhs};
+
+            ast.val_type = AST_VALUE_TYPE_UNARY;
+            ast.val_as->unary = u_ast;
+            break;
+        }
+        case TOKEN_TYPE_NUMBER: {
+            // Parse number
+            strncpy(tmp_cstr, lookahead.s, lookahead.len);
+            tmp_cstr[lookahead.len] = '\0';
+            double number = strtod(tmp_cstr, NULL);
+
+            // No next token - return the number
+            if (s == end) {
+                ast.val_type = AST_VALUE_TYPE_NUMBER;
+                ast.val_as->number = number;
+                return ast;
+            }
+
+            // Parse Binary Expr
+            lookahead = get_next_token(s, len);
+            s = s + lookahead.len;
+            if (!(lookahead.type == TOKEN_TYPE_OPERATOR)) {
+                fprintf(stderr, "Unknown token type %.*s. Expected operator.\n",
+                        (int)lookahead.len, lookahead.s);
+            }
+            Ast lhs = ast_default();
+            lhs.val_type = AST_VALUE_TYPE_NUMBER;
+            lhs.val_as->number = number;
+            Ast rhs = parse_expression(s, end - s);
+            BinaryAst b_ast = {.operator= * lookahead.s, .lhs = lhs, .rhs = rhs};
+
+            ast.val_type = AST_VALUE_TYPE_BINARY;
+            ast.val_as->binary = b_ast;
+            break;
+        }
+        // Parse Address
+        case TOKEN_TYPE_CELL_ADDRESS:
+            Ast cell_addres = ast_cell_address(s, end - s);
+            break;
+
+        default:
+            fprintf(stderr, "Unknown token type %.*s\n", (int)lookahead.len, lookahead.s);
+            break;
+    }
+    return ast;
+}
+
+void evaluate_expression(Expr* expr) {
+    if (expr->eval_state == EVAL_STATE_EVALUATED) {
+        return;
+    }
+    if (expr->eval_state == EVAL_STATE_IN_PROGRESS) {
+        fprintf(stderr, "Circular reference %s\n", expr->str);
+        exit(EXIT_FAILURE);
+    }
+    expr->eval_state = EVAL_STATE_IN_PROGRESS;
+    dbfprintf(stderr, "address of expr->str: %p\n", expr->str);
+    char* s = expr->str;
+    consume("=", &s);
+    Ast ast = parse_expression(s, strlen(expr->str));
+
+    expr->eval_state = EVAL_STATE_EVALUATED;
+}
+
+// AddressRC address_rc_from_str(str address_str) {
+//     size_t row = 0;
+//     size_t col = 0;
+//     str_partition()
+
+//     return (AddressRC){.row = row, .col = col};
+// }
+
+void evaluate_expr_cells(Table* tbl) {
+    Cell* end = fxarr_end(tbl->cells);
+    for (Cell* c = fxarr_begin(tbl->cells); c < end; ++c) {
+        if (c->value_type == VALUE_TYPE_EXPR) {
+            Expr* expr = tbl->exprs + c->value_as.expr_ndx;
+            evaluate_expression(expr);
+            c->value_as.number = expr->value;
+        }
+    }
+}
+
 int main(int argc, char const* argv[]) {
     (void)argc;
     (void)argv;
 
     Table tbl = {0};
     read_table(&tbl);
+    evaluate_expr_cells(&tbl);
 
-#if defined(DEBUG)
-    size_t ln_cells = fxarr_len(tbl.cells);
-    size_t ln_exprs = fxarr_len(tbl.exprs);
-    fprintf(stdout, "cells at: %p, ln: %lu\n", tbl.cells, ln_cells);
-    fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl.exprs, ln_exprs);
+    dbprintf("cells at: %p, ln: %lu\n", tbl.cells, fxarr_len(tbl.cells));
+    dbprintf("exprs at: %p, ln: %lu\n", tbl.exprs, fxarr_len(tbl.exprs));
 
-#endif   // DEBUG
     print_table(&tbl);
 
     fxarr_free(tbl.cells);
     fxarr_free(tbl.exprs);
-    return 0;
+    return EXIT_SUCCESS;
 }
