@@ -42,6 +42,7 @@ typedef enum {
 
 typedef union {
     char* str;
+    char* err_str;
     double number;
     size_t expr_ndx;   // index from the expressions array
 } Value;
@@ -93,7 +94,15 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
         size_t len = 64;
         size_t sz = len * sizeof(char);
         char* expr_str = malloc(sz);
-        snprintf(expr_str, sz, "=%d.5+%c3", (int)(row + 2 + col), ch);
+        if (col == 0) {
+            snprintf(expr_str, sz, "=%d.5+B%c355", (int)(row + 2 + col), ch);
+
+        } else if (col == 1) {
+            snprintf(expr_str, sz, "=%d", (int)(row + 2 + col));
+        }else{
+            snprintf(expr_str, sz, "=-%d", (int)(row + 2 + col));
+
+        }
         Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
         size_t expr_ndx = fxarr_len(tbl->exprs);
 
@@ -152,8 +161,12 @@ int cell_strview(const Cell* cell, const Expr* exprs, const bool with_type, char
         case VALUE_TYPE_TEXT:
             snprintf(buff, buff_len, with_type ? "TEXT(%s)" : "%s", cell->value_as.str);
             break;
+        case VALUE_TYPE_ERR:
+            snprintf(buff, buff_len, with_type ? "ERR(%s)" : "%s", cell->value_as.err_str);
+            break;
         case VALUE_TYPE_EXPR: {
-            Expr exp = exprs[cell->value_as.expr_ndx];
+            size_t index = cell->value_as.expr_ndx;
+            Expr exp = exprs[index]; 
             snprintf(buff, buff_len, with_type ? "EXPR(%s)" : "%s", exp.str);
         } break;
         default:
@@ -285,6 +298,15 @@ char get_decimal_point() {
     return '.';
 }
 
+Cell* table_cell_at(Table* tbl, AddressRC* addr) {
+    if(addr->row > tbl->nrows || addr->col > tbl->ncols){
+        fprintf(stderr, "Cannot find Cell(%lu, %lu)", addr->row, addr->col);
+        return NULL;
+    }
+    size_t index = addr->row * tbl->ncols + addr->col;
+    return &tbl->cells[index];
+}
+
 Token number_token(const char* s, size_t len) {
     Token token = {0};
     size_t i = 0;
@@ -331,38 +353,43 @@ Token cell_address_token(const char* s, size_t len) {
     return token;
 }
 
-Token get_next_token(const char* s, size_t len) {
+Token get_next_token(const char** s, size_t* len) {
     // number
-    if (!(len > 0)) {
-        return EOF_TOKEN;
-    }
+    size_t ln = *len;
+    const char* sp = *s;
 
-    if (isdigit(*s)) {
-        return number_token(s, len);
+    Token token = {0};
+    if (!(ln > 0)) {
+        token = EOF_TOKEN;
+    } else if (isdigit(*sp)) {
+        token = number_token(sp, ln);
+    } else if (*sp >= 'A' && *sp <= 'Z') {
+        // Address
+        token = cell_address_token(sp, ln);
+    } else if (is_operator(sp)) {
+        // Operator
+        token = operator_token(sp, ln);
+    } else {
+        fprintf(stderr, "Unknown token. %.*s", (int)ln, sp);
+        token = (Token){.type = TOKEN_TYPE_INVALID, .s = sp, .len = ln};
     }
-    // Address
-    if (*s >= 'A' && *s <= 'Z') {
-        return cell_address_token(s, len);
-    }
-    // Operator
-    if (is_operator(s)) {
-        return operator_token(s, len);
-    }
-
-    fprintf(stderr, "Unknown token. %.*s", (int)len, s);
-    return (Token){.type = TOKEN_TYPE_INVALID, .s = s, .len = len};
+    sp = sp + token.len;
+    ln -= token.len;
+    *s = sp;
+    *len = ln;
+    return token;
 }
 
-void consume(char* what, char** s) {
-    char* w = what;
-    char* sp = *s;
+void consume(const char* what, const char** s, size_t* len) {
+    const char* sp = *s;
+    size_t i = 0;
 
-    while (*w == *sp) {
-        dbfprintf(stderr, "consuming: %c\n", *w);
-        w++;
-        sp++;
+    while (what[i] == sp[i]) {
+        dbfprintf(stderr, "consuming: %c\n", what[i]);
+        ++i;
     }
-    *s = sp;
+    *s = sp + i;
+    *len -= i;
 }
 
 Ast ast_default() {
@@ -371,10 +398,7 @@ Ast ast_default() {
     return ast;
 }
 
-Ast cell_address_ast(const char* s, size_t len) {
-    // TODO: Start here!!!
-
-    Ast ast = {0};
+AddressRC cell_address_rc(const char* s, size_t len) {
     size_t col = 0;
     size_t row = 0;
     size_t i = 0;
@@ -388,8 +412,6 @@ Ast cell_address_ast(const char* s, size_t len) {
         exit(EXIT_FAILURE);
     }
 
-    len -= i;
-    i = 0;
     while (isdigit(s[i]) && i < len) {
         row = row * 10 + (s[i] - '0');
         ++i;
@@ -400,54 +422,62 @@ Ast cell_address_ast(const char* s, size_t len) {
         exit(EXIT_FAILURE);
     }
 
-    ast.val_type = AST_VALUE_TYPE_ADDRESS_RC;
-    ast.val_as->address_rc = (AddressRC){.row = row, .col = col};
-    return ast;
+    return (AddressRC){.row = row, .col = col};
 }
 
-typedef struct {
-    size_t len;
-    char* s;
-    bool has_next;
-    Token next;
-} Lexer;
-
-Token get_lookahead(Lexer* lexer) {
-    Token lookahead = lexer->next;
-    Token next = get_next_token(lexer->s, lexer->len);
-    lexer->has_next = next.len < lexer->len;
-    lexer->len -= next.len;
-    lexer->next = next;
-
-    return lookahead;
+char* TokenType_to_str(TokenType token_type) {
+    switch (token_type) {
+        case TOKEN_TYPE_NUMBER:
+            return "TOKEN_TYPE_NUMBER";
+            break;
+        case TOKEN_TYPE_OPERATOR:
+            return "TOKEN_TYPE_OPERATOR";
+            break;
+        case TOKEN_TYPE_CELL_ADDRESS:
+            return "TOKEN_TYPE_CELL_ADDRESS";
+            break;
+        case TOKEN_TYPE_INVALID:
+            return "TOKEN_TYPE_INVALID";
+            break;
+        case TOKEN_TYPE_EOF:
+            return "TOKEN_TYPE_EOF";
+            break;
+        case TOKEN_TYPE_ENUM_COUNT:
+            return "TOKEN_TYPE_ENUM_COUNT";
+            break;
+    }
+    return "";
 }
 
-Ast parse_expression(const char* expr, size_t len) {
-    char* s = (char*)expr;
-    dbfprintf(stderr, "address of expr and s: %p\n", &s);
+double str_tod(const char* s, size_t len) {
+    // tmp str for conversions
+    static fxarr_type(char) tmp_cstr = NULL;
+    fxarr_reserve(tmp_cstr, len);
+    strncpy(tmp_cstr, s, len);
+    tmp_cstr[len] = '\0';
+    return strtod(tmp_cstr, NULL);
+}
 
-    const char* end = s + len;
+Ast parse_expression(const char** expr, size_t* len) {
+    dbfprintf(stderr, "expr %.*s\n", (int)*len, *expr);
+
     Ast ast = ast_default();
 
-    // tmp str for conversions
-    fxarr_type(char) tmp_cstr = NULL;
-    fxarr_reserve(tmp_cstr, len);
+    const char* s = *expr;
+    size_t ln = *len;
 
-    dbfprintf(stderr, "address of and s: %p\n", &s);
-    Token lookahead = get_next_token(s, len);
+    while (ln) {
+        Token token = get_next_token(&s, &ln);
+        ;
 
-    while (lookahead.type != TOKEN_TYPE_EOF) {
-        Token token = lookahead;
-        s = s + token.len;
-        len -= token.len;
-        lookahead = get_next_token(s, len);
-        dbfprintf(stderr, "lookahead: %.*s\n", (int)lookahead.len, lookahead.s);
+        dbfprintf(stderr, "token: %.*s, type: %s\n", (int)token.len, token.s,
+                  TokenType_to_str(token.type));
 
         switch (token.type) {
             // Parse Unary Expr
             case TOKEN_TYPE_OPERATOR: {
                 char op = *token.s;
-                Ast rhs = parse_expression(s, len);
+                Ast rhs = parse_expression(&s, &ln);
                 UnaryAst u_ast = {.operator= op, .rhs = rhs};
                 ast.val_type = AST_VALUE_TYPE_UNARY;
                 ast.val_as->unary = u_ast;
@@ -455,9 +485,10 @@ Ast parse_expression(const char* expr, size_t len) {
             }
             case TOKEN_TYPE_NUMBER: {
                 // Parse number
-                strncpy(tmp_cstr, token.s, token.len);
-                tmp_cstr[token.len] = '\0';
-                double number = strtod(tmp_cstr, NULL);
+                double number = str_tod(token.s, token.len);
+                Token lookahead = get_next_token(&s, &ln);
+                dbfprintf(stderr, "lookahead: %.*s, type: %s\n", (int)lookahead.len, lookahead.s,
+                          TokenType_to_str(lookahead.type));
 
                 // No next token - return the number
                 if (lookahead.type == TOKEN_TYPE_EOF) {
@@ -474,7 +505,7 @@ Ast parse_expression(const char* expr, size_t len) {
                 Ast lhs = ast_default();
                 lhs.val_type = AST_VALUE_TYPE_NUMBER;
                 lhs.val_as->number = number;
-                Ast rhs = parse_expression(s, len);
+                Ast rhs = parse_expression(&s, &ln);
                 BinaryAst b_ast = {.operator= * lookahead.s, .lhs = lhs, .rhs = rhs};
                 ast.val_type = AST_VALUE_TYPE_BINARY;
                 ast.val_as->binary = b_ast;
@@ -482,50 +513,107 @@ Ast parse_expression(const char* expr, size_t len) {
             }
             // Parse Address
             case TOKEN_TYPE_CELL_ADDRESS:
-                Ast cell_addres = cell_address_ast(s, end - s);
+                AddressRC addr = cell_address_rc(token.s, token.len);
+                ast.val_type = AST_VALUE_TYPE_ADDRESS_RC;
+                ast.val_as->address_rc = addr;
                 break;
 
             default:
-                fprintf(stderr, "Unknown token type %.*s\n", (int)lookahead.len, lookahead.s);
+                fprintf(stderr, "Unknown token type %.*s\n", (int)token.len, token.s);
                 break;
         }
     }
 
+    *len = ln;
+    *expr = s;
     return ast;
 }
 
-void evaluate_expression(Expr* expr) {
+double evaluate_ast(Ast* ast, Table* tbl);
+
+void evaluate_expr_cell(Cell* c, Table* tbl) {
+    Expr* expr = &tbl->exprs[c->value_as.expr_ndx];
+
     if (expr->eval_state == EVAL_STATE_EVALUATED) {
         return;
     }
+
     if (expr->eval_state == EVAL_STATE_IN_PROGRESS) {
         fprintf(stderr, "Circular reference %s\n", expr->str);
-        exit(EXIT_FAILURE);
+        c->value_as.err_str = "#CREF#";
+        c->value_type = VALUE_TYPE_ERR;
+        expr->value = 0;
+        expr->eval_state = EVAL_STATE_EVALUATED;
+        return;
     }
-    expr->eval_state = EVAL_STATE_IN_PROGRESS;
-    dbfprintf(stderr, "address of expr->str: %p\n", expr->str);
-    char* s = expr->str;
-    consume("=", &s);
-    Ast ast = parse_expression(s, strlen(expr->str));
 
+    expr->eval_state = EVAL_STATE_IN_PROGRESS;
+    const char* s = expr->str;
+    size_t len = strlen(s);
+    consume("=", &s, &len);
+    Ast ast = parse_expression(&s, &len);
+    double result = evaluate_ast(&ast, tbl);
+    expr->value = result;
+    c->value_as.number = result;
     expr->eval_state = EVAL_STATE_EVALUATED;
 }
 
-// AddressRC address_rc_from_str(str address_str) {
-//     size_t row = 0;
-//     size_t col = 0;
-//     str_partition()
+double evaluate_ast(Ast* ast, Table* tbl) {
+    double result = 0;
+    switch (ast->val_type) {
+        case AST_VALUE_TYPE_NUMBER: {
+            result = ast->val_as->number;
+            break;
+        }
+        case AST_VALUE_TYPE_UNARY: {
+            int sign = 1;
+            UnaryAst unary = ast->val_as->unary;
+            if (unary.operator== '-') {
+                sign = -1;
+            }
+            result = evaluate_ast(&unary.rhs, tbl);
+            result *= sign;
+            break;
+        }
+        case AST_VALUE_TYPE_BINARY: {
+            double lhs_res = evaluate_ast(&ast->val_as->binary.lhs, tbl);
+            double rhs_res = evaluate_ast(&ast->val_as->binary.rhs, tbl);
+            result = lhs_res + rhs_res;
+            break;
+        }
+        case AST_VALUE_TYPE_ADDRESS_RC: {
+            AddressRC a = ast->val_as->address_rc;
+            Cell* c = table_cell_at(tbl, &a);
+            if(c == NULL){
+                return 0; // cannot find cell (same as empty)
+            }
+            if (c->value_type == VALUE_TYPE_EXPR) {
+                evaluate_expr_cell(c, tbl);
+                if(c->value_type != VALUE_TYPE_ERR){
+                    result = c->value_as.number;
+                }else{
+                    result = 0;
+                }
+            } else if (c->value_type  == VALUE_TYPE_NUMBER) {
+                result = c->value_as.number;
+            }else if(c->value_type == VALUE_TYPE_EMPTY) {
+                result = 0;
+            }else{
+                fprintf(stderr, "Non numeric cell(%lu, %lu) cannot be evaluated", c->row, c->col);
+            }
+        }
+        default:
+            break;
+    }
+    return result;
+}
 
-//     return (AddressRC){.row = row, .col = col};
-// }
 
 void evaluate_expr_cells(Table* tbl) {
     Cell* end = fxarr_end(tbl->cells);
     for (Cell* c = fxarr_begin(tbl->cells); c < end; ++c) {
         if (c->value_type == VALUE_TYPE_EXPR) {
-            Expr* expr = tbl->exprs + c->value_as.expr_ndx;
-            evaluate_expression(expr);
-            c->value_as.number = expr->value;
+            evaluate_expr_cell(c, tbl);
         }
     }
 }
@@ -536,6 +624,8 @@ int main(int argc, char const* argv[]) {
 
     Table tbl = {0};
     read_table(&tbl);
+    print_table(&tbl);
+
     evaluate_expr_cells(&tbl);
 
     dbprintf("cells at: %p, ln: %lu\n", tbl.cells, fxarr_len(tbl.cells));
