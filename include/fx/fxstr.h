@@ -1,4 +1,4 @@
-#if !defined(FX_FXSTR_H_)
+#ifndef FX_FXSTR_H_
 #define FX_FXSTR_H_
 
 #include <stdbool.h>
@@ -25,42 +25,52 @@
  * @param s string to repeat
  * @returns repeated string literal
  */
-#define fxstr_rept_lit(hundreds, tens, ones, s)                             \
+#define fxstr_rept_lit(hundreds, tens, ones, s)                     \
     fxstr_rept_lit##hundreds(fxstr_rept_lit10(fxstr_rept_lit10(s))) \
         fxstr_rept_lit##tens(fxstr_rept_lit10(s)) fxstr_rept_lit##ones(s)
 
-#define DEFINE_TRIVIAL_CLEANUP_FUNC(type, func)             \
-    static inline void func##p(type *p) {                   \
-            if (*p)                                         \
-                    func(*p);                               \
-    }                                                       \
+#define DEFINE_TRIVIAL_CLEANUP_FUNC(type, func) \
+    static inline void func##p(type* p) {       \
+        if (*p) func(*p);                       \
+    }                                           \
     struct __useless_struct_to_allow_trailing_semicolon__
 
 /**
- * @brief fxstr - struct with <string> and <len>.
+ * @brief struct with len and char data[]
  */
 typedef struct {
     size_t len;
-    char* data;
+    char data[];
 } fxstr;
 
+
 /**
- * @brief Trims string <s> and writes the result onto <trimmed>.
- * @param s string to trim
- * @returns trimmed fxstr
+ * @brief struct with len and char data[64]
  */
-fxstr fxstr_trim(fxstr* s); 
+typedef struct fxstr64 {
+    size_t len;
+    char data[64];
+} fxstr64_t;
 
-static inline const char* yes_no(bool b) {
-        return b ? "yes" : "no";
+
+/**
+ * @brief struct with len and char data[256]
+ */
+typedef struct fxstr256 {
+    size_t len;
+    char data[256];
+} fxstr256_t;
+
+static inline const char* fx_yes_no(bool b) {
+    return b ? "yes" : "no";
 }
 
-static inline const char* true_false(bool b) {
-        return b ? "true" : "false";
+static inline const char* fx_true_false(bool b) {
+    return b ? "true" : "false";
 }
 
-static inline const char* one_zero(bool b) {
-        return b ? "1" : "0";
+static inline const char* fx_one_zero(bool b) {
+    return b ? "1" : "0";
 }
 
 #endif   // FX_FXSTR_H_
