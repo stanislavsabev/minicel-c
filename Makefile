@@ -31,10 +31,10 @@ HSRCS=$(wildcard $(SRC_DIR)/*.h)
 OBJS=$(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 DFLAGS := $(addprefix -D,$(DFLAGS))
 
-all: debug  ## Default action
+all: debug ## Default rule
 
 b: build
-build: debug  ## Build current target
+build: debug ## Build current target
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $^ -o $@
@@ -83,6 +83,9 @@ src_fxlib:
 
 check: ## Run valgrind memory sanitizer
 	@valgrind --undef-value-errors=no  $(BIN_DIR)/$(TARGET)
+
+format: ## Format with clang-format
+	@clang-format -i $(SRCS)
 
 h: help ##
 help: ## Show this message

@@ -1,3 +1,5 @@
+*.o
 obj/
 bin/
 lib/
+.clang-format
