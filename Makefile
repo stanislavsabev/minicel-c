@@ -27,7 +27,8 @@ LIBFXC = libfxc.a
 TARGET = main
 
 SRCS=$(wildcard $(SRC_DIR)/*.c)
-HSRCS=$(wildcard $(SRC_DIR)/*.h)
+SRC_HEADERS=$(wildcard $(SRC_DIR)/*.h)
+INC_HEADERS=$(wildcard $(INC_DIR)/*.h)
 OBJS=$(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 DFLAGS := $(addprefix -D,$(DFLAGS))
 
@@ -39,8 +40,10 @@ build: debug ## Build current target
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $^ -o $@
 
-$(TARGET): $(OBJS) $(HSRCS)
+$(TARGET): $(OBJS) headers
 	$(CC) $(CFLAGS) $(OBJS) -o $(BIN_DIR)/$(TARGET) -I$(INC_DIR) -L$(LIB_DIR) -l:$(LIBFXC)
+
+headers: $(SRC_HEADERS) $(INC_HEADERS)
 
 db: debug ##
 debug: clean
