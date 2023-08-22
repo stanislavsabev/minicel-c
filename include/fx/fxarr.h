@@ -76,12 +76,12 @@ typedef struct fxarr_meta_t {
  * @param capacity size_t - minimum capacity for the array.
  * @return void
  */
-#define fxarr_reserve(arr, capacity)             \
-    do {                                        \
+#define fxarr_reserve(arr, capacity)              \
+    do {                                          \
         size_t fxarr_cap__ = fxarr_capacity(arr); \
-        if (fxarr_cap__ < (capacity)) {          \
-            _fxarr_grow((arr), (capacity));      \
-        }                                       \
+        if (fxarr_cap__ < (capacity)) {           \
+            _fxarr_grow((arr), (capacity));       \
+        }                                         \
     } while (0)
 
 /**
@@ -90,10 +90,10 @@ typedef struct fxarr_meta_t {
  * @return void
  */
 #define fxarr_clear(arr)            \
-    do {                           \
-        if (arr) {                 \
+    do {                            \
+        if (arr) {                  \
             _fxarr_set_len(arr, 0); \
-        }                          \
+        }                           \
     } while (0)
 
 /**
@@ -103,11 +103,11 @@ typedef struct fxarr_meta_t {
  * @return void
  */
 #define fxarr_free(arr)                           \
-    do {                                         \
-        if (arr) {                               \
+    do {                                          \
+        if (arr) {                                \
             void *p1__ = _fxarr_arr_to_meta(arr); \
             fxarr_clib_free(p1__);                \
-        }                                        \
+        }                                         \
     } while (0)
 
 /**
@@ -147,14 +147,14 @@ typedef struct fxarr_meta_t {
  * @param value the value to add
  * @return void
  */
-#define fxarr_append(arr, value)                                    \
-    do {                                                           \
-        size_t fxarr_cap__ = fxarr_capacity(arr);                    \
-        if (fxarr_cap__ <= fxarr_len(arr)) {                         \
+#define fxarr_append(arr, value)                                      \
+    do {                                                              \
+        size_t fxarr_cap__ = fxarr_capacity(arr);                     \
+        if (fxarr_cap__ <= fxarr_len(arr)) {                          \
             _fxarr_grow((arr), fxarr_compute_next_grow(fxarr_cap__)); \
-        }                                                          \
-        (arr)[fxarr_len(arr)] = (value);                            \
-        _fxarr_set_len((arr), fxarr_len(arr) + 1);                   \
+        }                                                             \
+        (arr)[fxarr_len(arr)] = (value);                              \
+        _fxarr_set_len((arr), fxarr_len(arr) + 1);                    \
     } while (0)
 
 /**
@@ -165,16 +165,16 @@ typedef struct fxarr_meta_t {
  * @return void
  */
 #define fxarr_insert(arr, ix, val)                                                               \
-    do {                                                                                        \
-        size_t fxarr_cap__ = fxarr_capacity(arr);                                                 \
-        if (fxarr_cap__ <= fxarr_len(arr)) {                                                      \
-            _fxarr_grow((arr), fxarr_compute_next_grow(fxarr_cap__));                              \
-        }                                                                                       \
+    do {                                                                                         \
+        size_t fxarr_cap__ = fxarr_capacity(arr);                                                \
+        if (fxarr_cap__ <= fxarr_len(arr)) {                                                     \
+            _fxarr_grow((arr), fxarr_compute_next_grow(fxarr_cap__));                            \
+        }                                                                                        \
         if ((ix) < fxarr_len(arr)) {                                                             \
             memmove((arr) + (ix) + 1, (arr) + (ix), sizeof(*(arr)) * ((fxarr_len(arr)) - (ix))); \
-        }                                                                                       \
-        (arr)[(ix)] = (val);                                                                    \
-        _fxarr_set_len((arr), fxarr_len(arr) + 1);                                                \
+        }                                                                                        \
+        (arr)[(ix)] = (val);                                                                     \
+        _fxarr_set_len((arr), fxarr_len(arr) + 1);                                               \
     } while (0)
 
 /**
@@ -185,11 +185,11 @@ typedef struct fxarr_meta_t {
  * @return void
  */
 #define fxarr_pop_back(arr, elem_ptr)                                         \
-    do {                                                                     \
-        if ((elem_ptr)) {                                                    \
+    do {                                                                      \
+        if ((elem_ptr)) {                                                     \
             memcpy((elem_ptr), &((arr)[fxarr_len(arr) - 1]), sizeof(*(arr))); \
-        }                                                                    \
-        _fxarr_set_len((arr), fxarr_len(arr) - 1);                             \
+        }                                                                     \
+        _fxarr_set_len((arr), fxarr_len(arr) - 1);                            \
     } while (0)
 
 /**
@@ -199,17 +199,17 @@ typedef struct fxarr_meta_t {
  * @param elem_ptr pointer to receive the removed element
  * @return void
  */
-#define fxarr_remove(arr, ix, elem_ptr)                                                       \
+#define fxarr_remove(arr, ix, elem_ptr)                                                      \
     do {                                                                                     \
         if (arr) {                                                                           \
-            const size_t ln__ = fxarr_len(arr);                                               \
+            const size_t ln__ = fxarr_len(arr);                                              \
             if ((ix) == ln__ - 1) {                                                          \
-                fxarr_pop_back(arr, elem_ptr);                                                \
+                fxarr_pop_back(arr, elem_ptr);                                               \
             } else if ((ix) < ln__) {                                                        \
                 if ((elem_ptr)) {                                                            \
-                    memcpy((elem_ptr), &((arr)[fxarr_len(arr) - 1]), sizeof(*(arr)));         \
+                    memcpy((elem_ptr), &((arr)[fxarr_len(arr) - 1]), sizeof(*(arr)));        \
                 }                                                                            \
-                _fxarr_set_len((arr), ln__ - 1);                                              \
+                _fxarr_set_len((arr), ln__ - 1);                                             \
                 memmove((arr) + (ix), (arr) + (ix) + 1, sizeof(*(arr)) * (ln__ - 1 - (ix))); \
             }                                                                                \
         }                                                                                    \
@@ -222,12 +222,12 @@ typedef struct fxarr_meta_t {
  * @return void
  */
 #define fxarr_copy(src, dest)                                       \
-    do {                                                           \
-        if ((src)) {                                               \
-            _fxarr_grow(dest, fxarr_len(src));                       \
-            _fxarr_set_len(dest, fxarr_len(src));                    \
+    do {                                                            \
+        if ((src)) {                                                \
+            _fxarr_grow(dest, fxarr_len(src));                      \
+            _fxarr_set_len(dest, fxarr_len(src));                   \
             memcpy((dest), (src), fxarr_len(src) * sizeof(*(src))); \
-        }                                                          \
+        }                                                           \
     } while (0)
 
 /**
@@ -237,10 +237,10 @@ typedef struct fxarr_meta_t {
  * @return void
  */
 #define _fxarr_set_capacity(arr, capacity_)                  \
-    do {                                                    \
-        if (arr) {                                          \
+    do {                                                     \
+        if (arr) {                                           \
             _fxarr_arr_to_meta(arr)->capacity = (capacity_); \
-        }                                                   \
+        }                                                    \
     } while (0)
 
 /**
@@ -250,10 +250,10 @@ typedef struct fxarr_meta_t {
  * @return void
  */
 #define _fxarr_set_len(arr, len)                     \
-    do {                                            \
-        if ((arr)) {                                \
+    do {                                             \
+        if ((arr)) {                                 \
             _fxarr_arr_to_meta(arr)->length = (len); \
-        }                                           \
+        }                                            \
     } while (0)
 
 /**
@@ -263,21 +263,21 @@ typedef struct fxarr_meta_t {
  * @param capacity the new capacity to set
  * @return void
  */
-#define _fxarr_grow(arr, capacity)                                                   \
-    do {                                                                            \
+#define _fxarr_grow(arr, capacity)                                                    \
+    do {                                                                              \
         const size_t fxarr_ln__ = (capacity) * sizeof(*(arr)) + sizeof(fxarr_meta_t); \
-        if ((arr)) {                                                                \
+        if ((arr)) {                                                                  \
             void *fxarr_p1__ = _fxarr_arr_to_meta(arr);                               \
-            void *fxarr_p2__ = fxarr_clib_realloc(fxarr_p1__, fxarr_ln__);              \
-            assert(fxarr_p2__);                                                      \
+            void *fxarr_p2__ = fxarr_clib_realloc(fxarr_p1__, fxarr_ln__);            \
+            assert(fxarr_p2__);                                                       \
             (arr) = _fxarr_meta_to_arr(fxarr_p2__);                                   \
-        } else {                                                                    \
-            void *fxarr_p__ = fxarr_clib_malloc(fxarr_ln__);                           \
-            assert(fxarr_p__);                                                       \
+        } else {                                                                      \
+            void *fxarr_p__ = fxarr_clib_malloc(fxarr_ln__);                          \
+            assert(fxarr_p__);                                                        \
             (arr) = _fxarr_meta_to_arr(fxarr_p__);                                    \
-            _fxarr_set_len((arr), 0);                                                \
-        }                                                                           \
-        _fxarr_set_capacity((arr), (capacity));                                      \
+            _fxarr_set_len((arr), 0);                                                 \
+        }                                                                             \
+        _fxarr_set_capacity((arr), (capacity));                                       \
     } while (0)
 
 #endif /* FX_FXARR_H_ */

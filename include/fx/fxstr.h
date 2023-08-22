@@ -29,9 +29,12 @@
     fxstr_rept_lit##hundreds(fxstr_rept_lit10(fxstr_rept_lit10(s))) \
         fxstr_rept_lit##tens(fxstr_rept_lit10(s)) fxstr_rept_lit##ones(s)
 
-static inline char* fxstr_bool_to_str(bool iso) {
-    return iso ? "true" : "false";
-}
+#define DEFINE_TRIVIAL_CLEANUP_FUNC(type, func)             \
+    static inline void func##p(type *p) {                   \
+            if (*p)                                         \
+                    func(*p);                               \
+    }                                                       \
+    struct __useless_struct_to_allow_trailing_semicolon__
 
 /**
  * @brief fxstr - struct with <string> and <len>.
@@ -47,5 +50,17 @@ typedef struct {
  * @returns trimmed fxstr
  */
 fxstr fxstr_trim(fxstr* s); 
+
+static inline const char* yes_no(bool b) {
+        return b ? "yes" : "no";
+}
+
+static inline const char* true_false(bool b) {
+        return b ? "true" : "false";
+}
+
+static inline const char* one_zero(bool b) {
+        return b ? "1" : "0";
+}
 
 #endif   // FX_FXSTR_H_
