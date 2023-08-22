@@ -33,8 +33,8 @@ DFLAGS := $(addprefix -D,$(DFLAGS))
 
 all: debug  ## Default action
 
-build: debug  ## Build current target
 b: build
+build: debug  ## Build current target
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $^ -o $@
@@ -42,36 +42,38 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 $(TARGET): $(OBJS) $(HSRCS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(BIN_DIR)/$(TARGET) -I$(INC_DIR) -L$(LIB_DIR) -l:$(LIBFXC)
 
+db: debug ##
+debug: clean
 debug: makedirs Makefile
 debug: CFLAGS += $(DFLAGS) # set -D flags
-debug: $(TARGET) ## Build debug target
+debug: $(TARGET) ## Build debug target with -D flags
 
-db: clean debug # clear and build debug target
-
-ndb: DFLAGS := # unset -D flags
-ndb: clean debug # clear and build debug target
+ndb: ##
+nodebug: DFLAGS := # unset -D flags
+nodebug: clean debug ## Build debug target without -D flags
 
 release: CFLAGS := $(RELEASE_CFLAGS)
 release: clean
 release: $(TARGET) ## Build release target
 
+rb: rebuild ##
 rebuild: clean build ## Clean and rebuild target
-rb: rebuild
 
+r: run ##
 run: ## Run current target
 	./$(BIN_DIR)/$(TARGET)
-r: run
+
 rndb: ndb run
 rdb: db run
 
+c: clean ##
 clean: ## Clean up build directories
 	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/*
-c: clean
 
 makedirs: ## Create build directories
 	@mkdir -p $(INC_DIR) $(LIB_DIR) $(OBJ_DIR) $(BIN_DIR)
 
-src_libs: src_fxlib ## Source external libraries
+libs: src_fxlib ## Source external libraries
 
 src_fxlib:
 	mkdir -p  $(LIBFXC_INC_DIR)
@@ -82,8 +84,10 @@ src_fxlib:
 check: ## Run valgrind memory sanitizer
 	@valgrind --undef-value-errors=no  $(BIN_DIR)/$(TARGET)
 
-h: help
+h: help ##
 help: ## Show this message
-	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make  \033[36m<target>\033[0m\n\nTargets:\n"} \
+    /^[a-zA-Z_-]+:.*?##/ { if(length($$2) == 0 ) { printf "\033[36m%7s\033[0m", $$1 } \
+							  else { printf "\t\033[36m%-10s\033[0m %s\n", $$1, $$2 }}' $(MAKEFILE_LIST)
 
 .PHONY: help run build rebuild release debug makedirs clean check source_libs
