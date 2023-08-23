@@ -5,14 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "fx/fxarr.h"
-#include "fx/fxutil.h"
+#define FX_IMPLEMENTATION
+#include "fx/arr.h"
+#include "fx/str.h"
+#include "fx/util.h"
 
 #define CELL_PRINT_WIDTH 20
-#define WITH_TYPE false
-#define OPERATORS "-+"
-#define MAX_ROWS 1024
-#define MAX_COLUMNS 702   // ZZ
+#define WITH_TYPE        false
+#define OPERATORS        "-+"
+#define MAX_ROWS         1024
+#define MAX_COLUMNS      702   // ZZ
 
 typedef struct {
     size_t row;
@@ -80,7 +82,7 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
         char* header = malloc(sz);
         snprintf(header, sz, "%c", ch);
 
-        dbprintf("\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
+        dprintf("\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
 
         cell.value_type = VALUE_TYPE_TEXT;
         cell.value_as.str = header;
@@ -99,9 +101,8 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
 
         } else if (col == 1) {
             snprintf(expr_str, sz, "=%d", (int)(row + 2 + col));
-        }else{
+        } else {
             snprintf(expr_str, sz, "=-%d", (int)(row + 2 + col));
-
         }
         Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
         size_t expr_ndx = fxarr_len(tbl->exprs);
@@ -110,7 +111,7 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
         cell.value_type = VALUE_TYPE_EXPR;
 
         fxarr_append(tbl->exprs, expr);
-        dbfprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
+        dfprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
     }
     return cell;
 }
@@ -138,10 +139,10 @@ int read_table(Table* tbl) {
         }
     }
 
-    dbfprintf(stderr, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs,
-              exprs == tbl->exprs);
-    dbfprintf(stderr, "cells at: %p, ln: %lu\n", tbl->cells, fxarr_len(tbl->cells));
-    dbfprintf(stderr, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
+    dfprintf(stderr, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs,
+             exprs == tbl->exprs);
+    dfprintf(stderr, "cells at: %p, ln: %lu\n", tbl->cells, fxarr_len(tbl->cells));
+    dfprintf(stderr, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
     return 0;
 }
 
@@ -166,7 +167,7 @@ int cell_strview(const Cell* cell, const Expr* exprs, const bool with_type, char
             break;
         case VALUE_TYPE_EXPR: {
             size_t index = cell->value_as.expr_ndx;
-            Expr exp = exprs[index]; 
+            Expr exp = exprs[index];
             snprintf(buff, buff_len, with_type ? "EXPR(%s)" : "%s", exp.str);
         } break;
         default:
@@ -183,7 +184,7 @@ char* cell_rc_strview(const Cell* cell) {
     size_t sz = 64 * sizeof(char);
     char* buff = malloc(sz);
     snprintf(buff, sz, "CELL(%lu, %lu)", cell->row, cell->col);
-    dbfprintf(stdout, "\nsz: %lu vs sizeof(buff): %lu\n", sz, sizeof(buff));
+    dfprintf(stdout, "\nsz: %lu vs sizeof(buff): %lu\n", sz, sizeof(buff));
     return buff;
 }
 
@@ -197,7 +198,7 @@ void print_table(Table* tbl) {
         for (size_t c = 0; c < tbl->ncols; c++) {
             size_t rc = r * tbl->ncols + c;
             Cell cell = tbl->cells[rc];
-            char cell_str[CELL_PRINT_WIDTH];
+            char cell_str[CELL_PRINT_WIDTH + 1];
             cell_strview(&cell, tbl->exprs, with_type, cell_str, sizeof(cell_str));
             size_t ln = strlen(cell_str);
 
@@ -299,7 +300,7 @@ char get_decimal_point() {
 }
 
 Cell* table_cell_at(Table* tbl, AddressRC* addr) {
-    if(addr->row > tbl->nrows || addr->col > tbl->ncols){
+    if (addr->row > tbl->nrows || addr->col > tbl->ncols) {
         fprintf(stderr, "Cannot find Cell(%lu, %lu)", addr->row, addr->col);
         return NULL;
     }
@@ -385,7 +386,7 @@ void consume(const char* what, const char** s, size_t* len) {
     size_t i = 0;
 
     while (what[i] == sp[i]) {
-        dbfprintf(stderr, "consuming: %c\n", what[i]);
+        dfprintf(stderr, "consuming: %c\n", what[i]);
         ++i;
     }
     *s = sp + i;
@@ -459,7 +460,7 @@ double str_tod(const char* s, size_t len) {
 }
 
 Ast parse_expression(const char** expr, size_t* len) {
-    dbfprintf(stderr, "expr %.*s\n", (int)*len, *expr);
+    dfprintf(stderr, "expr %.*s\n", (int)*len, *expr);
 
     Ast ast = ast_default();
 
@@ -470,8 +471,8 @@ Ast parse_expression(const char** expr, size_t* len) {
         Token token = get_next_token(&s, &ln);
         ;
 
-        dbfprintf(stderr, "token: %.*s, type: %s\n", (int)token.len, token.s,
-                  TokenType_to_str(token.type));
+        dfprintf(stderr, "token: %.*s, type: %s\n", (int)token.len, token.s,
+                 TokenType_to_str(token.type));
 
         switch (token.type) {
             // Parse Unary Expr
@@ -487,8 +488,8 @@ Ast parse_expression(const char** expr, size_t* len) {
                 // Parse number
                 double number = str_tod(token.s, token.len);
                 Token lookahead = get_next_token(&s, &ln);
-                dbfprintf(stderr, "lookahead: %.*s, type: %s\n", (int)lookahead.len, lookahead.s,
-                          TokenType_to_str(lookahead.type));
+                dfprintf(stderr, "lookahead: %.*s, type: %s\n", (int)lookahead.len, lookahead.s,
+                         TokenType_to_str(lookahead.type));
 
                 // No next token - return the number
                 if (lookahead.type == TOKEN_TYPE_EOF) {
@@ -584,21 +585,21 @@ double evaluate_ast(Ast* ast, Table* tbl) {
         case AST_VALUE_TYPE_ADDRESS_RC: {
             AddressRC a = ast->val_as->address_rc;
             Cell* c = table_cell_at(tbl, &a);
-            if(c == NULL){
-                return 0; // cannot find cell (same as empty)
+            if (c == NULL) {
+                return 0;   // cannot find cell (same as empty)
             }
             if (c->value_type == VALUE_TYPE_EXPR) {
                 evaluate_expr_cell(c, tbl);
-                if(c->value_type != VALUE_TYPE_ERR){
+                if (c->value_type != VALUE_TYPE_ERR) {
                     result = c->value_as.number;
-                }else{
+                } else {
                     result = 0;
                 }
-            } else if (c->value_type  == VALUE_TYPE_NUMBER) {
+            } else if (c->value_type == VALUE_TYPE_NUMBER) {
                 result = c->value_as.number;
-            }else if(c->value_type == VALUE_TYPE_EMPTY) {
+            } else if (c->value_type == VALUE_TYPE_EMPTY) {
                 result = 0;
-            }else{
+            } else {
                 fprintf(stderr, "Non numeric cell(%lu, %lu) cannot be evaluated", c->row, c->col);
             }
         }
@@ -607,7 +608,6 @@ double evaluate_ast(Ast* ast, Table* tbl) {
     }
     return result;
 }
-
 
 void evaluate_expr_cells(Table* tbl) {
     Cell* end = fxarr_end(tbl->cells);
@@ -628,8 +628,8 @@ int main(int argc, char const* argv[]) {
 
     evaluate_expr_cells(&tbl);
 
-    dbprintf("cells at: %p, ln: %lu\n", tbl.cells, fxarr_len(tbl.cells));
-    dbprintf("exprs at: %p, ln: %lu\n", tbl.exprs, fxarr_len(tbl.exprs));
+    dprintf("cells at: %p, ln: %lu\n", tbl.cells, fxarr_len(tbl.cells));
+    dprintf("exprs at: %p, ln: %lu\n", tbl.exprs, fxarr_len(tbl.exprs));
 
     print_table(&tbl);
 
