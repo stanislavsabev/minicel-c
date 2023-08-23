@@ -96,4 +96,4 @@ help: ## Show this message
     /^[a-zA-Z_-]+:.*?##/ { if(length($$2) == 0 ) { printf "\033[36m%7s\033[0m", $$1 } \
 							  else { printf "\t\033[36m%-10s\033[0m %s\n", $$1, $$2 }}' $(MAKEFILE_LIST)
 
-.PHONY: help run build rebuild release debug makedirs clean check source_libs
+.PHONY: build headers db debug ndb nodebug release rb rebuild r run c clean makedirs libs check format h help 
