@@ -13,22 +13,22 @@
     })
 
 #ifdef DEBUG
-#define dbprintf(__format, ...)                 \
+#define dprintf(__format, ...)                  \
     do {                                        \
         fprintf(stderr, __format, __VA_ARGS__); \
     } while (false)
 
-#define dbfprintf(__stream, __format, ...)        \
+#define dfprintf(__stream, __format, ...)         \
     do {                                          \
         fprintf(__stream, __format, __VA_ARGS__); \
     } while (false)
 #else
-#define dbprintf(...) \
-    do {              \
+#define dprintf(...) \
+    do {             \
     } while (false)
 
-#define dbfprintf(...) \
-    do {               \
+#define dfprintf(...) \
+    do {              \
     } while (false)
 #endif
 
