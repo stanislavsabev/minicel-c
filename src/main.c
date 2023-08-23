@@ -63,6 +63,8 @@ typedef struct {
     Expr* exprs;
 } Table;
 
+Table tbl = {0};
+
 void print_horizontal_line(size_t cell_width, size_t ncols) {
     size_t repetitions = cell_width * ncols + ncols + 1;
     for (size_t i = 0; i < repetitions; i++) {
@@ -622,7 +624,6 @@ int main(int argc, char const* argv[]) {
     (void)argc;
     (void)argv;
 
-    Table tbl = {0};
     read_table(&tbl);
     print_table(&tbl);
 
