@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define FX_IMPLEMENTATION
 #include "fx/arr.h"
@@ -63,7 +64,6 @@ typedef struct {
     Expr* exprs;
 } Table;
 
-Table tbl = {0};
 
 void print_horizontal_line(size_t cell_width, size_t ncols) {
     size_t repetitions = cell_width * ncols + ncols + 1;
@@ -118,11 +118,59 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
     return cell;
 }
 
+int read_table(Table* tbl, str csv) {
+    assert(0 && "Not implemented!");
+    return 0;
+}
+
+str read_csv(const char* file_name) {
+    char* buff = NULL;
+    long len = 0;
+    FILE* fp = fopen(file_name, "rb");
+    if(fp == NULL){
+        goto error;
+    }
+    int fk = fseek(fp, 0, SEEK_END);
+    if(fk < 0){
+        goto error;
+    }
+    len = ftell(fp);
+    if(len < 0) {
+        goto error;
+    }
+    fseek(fp, 0, SEEK_SET);
+    rewind(fp);
+
+    buff = malloc(len);
+    if(buff == NULL){
+        goto error;
+    }
+    
+    size_t read = fread(buff, sizeof(char), len, fp);
+    if(ferror(fp)){
+        goto error;
+    }
+    assert(read == (size_t)len);
+
+    fclose(fp);
+    return (str){.data = buff, .len  = len};
+error:
+    if(fp){
+        fclose(fp);
+    }
+    if(buff){
+        free(buff);
+        buff = NULL;
+    }
+    fprintf(stderr, "Error reading file %s.", file_name);
+    return str_null;
+}
+
 /// @brief TODO: Finish implementation
 /// @param tbl - table with cells
 /// @param exprs - array with expressions
 /// @return
-int read_table(Table* tbl) {
+int read_table_dummy(Table* tbl, char* file_name) {
     size_t row_count = tbl->nrows = 4;
     size_t col_count = tbl->ncols = 3;
 
@@ -620,11 +668,31 @@ void evaluate_expr_cells(Table* tbl) {
     }
 }
 
-int main(int argc, char const* argv[]) {
-    (void)argc;
-    (void)argv;
+void print_usage(){
+    puts("usage: ./minicell <filename.csv>");
+}
 
-    read_table(&tbl);
+int main(int argc, char const* argv[argc]) {
+    if(argc != 2){
+        fprintf(stderr, "Missing or invalid argument list. See -h for usage.\n");
+        return EXIT_FAILURE;
+    }
+    if(strcmp("-h", argv[1]) == 0){
+        print_usage();
+        return EXIT_SUCCESS;
+    }
+
+    str csv = read_csv(argv[1]);
+    if(csv.data == NULL){
+        return EXIT_FAILURE;
+    }
+    puts("csv:");
+    fwrite(csv.data, 1, csv.len, stdout);
+
+    Table tbl = {0};
+    if(read_table(&tbl, csv)){
+        return EXIT_FAILURE;
+    }
     print_table(&tbl);
 
     evaluate_expr_cells(&tbl);
@@ -636,5 +704,6 @@ int main(int argc, char const* argv[]) {
 
     fxarr_free(tbl.cells);
     fxarr_free(tbl.exprs);
+
     return EXIT_SUCCESS;
 }

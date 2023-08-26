@@ -9,7 +9,7 @@
  */
 typedef struct fxstr_s {
     size_t len;
-    char data[];
+    char* data;
 } fxstr_t;
 
 /**
@@ -28,11 +28,6 @@ typedef struct fxstr_buf256_s {
     char data[256];
 } fxstr_buf256_t;
 
-// ------------------------------------------------------------------------------------------
-//  IMPLEMENTATION
-// ------------------------------------------------------------------------------------------
-#ifdef FX_IMPLEMENTATION
-
 #ifndef FX_NO_SHORT_NAMES
 
 #define DEFINE_TRIVIAL_CLEANUP_FUNC FX_DEFINE_TRIVIAL_CLEANUP_FUNC
@@ -43,10 +38,21 @@ typedef struct fxstr_buf256_s {
 #define str                         fxstr_t
 #define str_buf64                   fxstr_buf64_t
 #define str_buf256                  fxstr_buf256_t
-
-#else
+#define str_null                    fxstr_null
 
 #endif   // FX_NO_SHORT_NAMES
+
+#define fxstr_null             \
+    (fxstr_t) {                \
+        .data = NULL, .len = 0 \
+    }
+
+#endif   // FX_FXSTR_H_
+
+// ------------------------------------------------------------------------------------------
+//  IMPLEMENTATION
+// ------------------------------------------------------------------------------------------
+#ifdef FX_IMPLEMENTATION
 
 #define FX_DEFINE_TRIVIAL_CLEANUP_FUNC(type, func) \
     static inline void func##p(type* p) {          \
@@ -91,4 +97,3 @@ static inline const char* fx_one_zero(bool b) {
 }
 
 #endif   // FX_IMPLEMENTATION
-#endif   // FX_FXSTR_H_

@@ -24,7 +24,7 @@ LIBFXC_INC_DIR = $(INC_DIR)/fx
 LIBFXC = libfxc.a
 
 # Target name
-TARGET = main
+TARGET = minicell
 
 SRCS=$(wildcard $(SRC_DIR)/*.c)
 SRC_HEADERS=$(wildcard $(SRC_DIR)/*.h)
@@ -46,7 +46,6 @@ $(TARGET): $(OBJS) headers
 headers: $(SRC_HEADERS) $(INC_HEADERS)
 
 db: debug ##
-debug: clean
 debug: makedirs Makefile
 debug: CFLAGS += $(DFLAGS) # set -D flags
 debug: $(TARGET) ## Build debug target with -D flags
@@ -64,7 +63,7 @@ rebuild: clean build ## Clean and rebuild target
 
 r: run ##
 run: ## Run current target
-	./$(BIN_DIR)/$(TARGET)
+	@$(BIN_DIR)/$(TARGET) ./input.csv
 
 rndb: ndb run
 rdb: db run
