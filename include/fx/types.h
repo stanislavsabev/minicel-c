@@ -28,7 +28,7 @@ typedef byte bool;
 #endif
 
 #ifndef NULL
-#define NULL ((void *)0)
+#define NULL ((void*)0)
 #endif
 
 #endif   // __FXTYPES_H__

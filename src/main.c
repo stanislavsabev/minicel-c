@@ -6,7 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define FX_IMPLEMENTATION
+#define FXSTR_IMPLEMENTATION
 #include "fx/arr.h"
 #include "fx/str.h"
 #include "fx/util.h"
@@ -64,7 +64,6 @@ typedef struct {
     Expr* exprs;
 } Table;
 
-
 void print_horizontal_line(size_t cell_width, size_t ncols) {
     size_t repetitions = cell_width * ncols + ncols + 1;
     for (size_t i = 0; i < repetitions; i++) {
@@ -118,59 +117,82 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
     return cell;
 }
 
-int read_table(Table* tbl, str csv) {
-    assert(0 && "Not implemented!");
-    return 0;
-}
-
 str read_csv(const char* file_name) {
     char* buff = NULL;
     long len = 0;
     FILE* fp = fopen(file_name, "rb");
-    if(fp == NULL){
+    if (fp == NULL) {
         goto error;
     }
     int fk = fseek(fp, 0, SEEK_END);
-    if(fk < 0){
+    if (fk < 0) {
         goto error;
     }
     len = ftell(fp);
-    if(len < 0) {
+    if (len < 0) {
         goto error;
     }
     fseek(fp, 0, SEEK_SET);
     rewind(fp);
 
     buff = malloc(len);
-    if(buff == NULL){
+    if (buff == NULL) {
         goto error;
     }
-    
+
     size_t read = fread(buff, sizeof(char), len, fp);
-    if(ferror(fp)){
+    if (ferror(fp)) {
         goto error;
     }
     assert(read == (size_t)len);
 
     fclose(fp);
-    return (str){.data = buff, .len  = len};
+    return (str){.data = buff, .len = len};
 error:
-    if(fp){
+    if (fp) {
         fclose(fp);
     }
-    if(buff){
+    if (buff) {
         free(buff);
         buff = NULL;
     }
     fprintf(stderr, "Error reading file %s.", file_name);
-    return str_null;
+    return str_null();
 }
 
-/// @brief TODO: Finish implementation
+/// @brief Builds table from csv data
 /// @param tbl - table with cells
-/// @param exprs - array with expressions
-/// @return
-int read_table_dummy(Table* tbl, char* file_name) {
+/// @param csv - str with csv data
+/// @return 0 if no errors or non zero error code
+int build_table(Table* tbl, str csv) {
+    arr_init(Cell, cells);
+    arr_init(Expr, exprs);
+    fxstr_arr_t lines = fxstr_arr_init(2);
+    size_t n_line = fxstr_split_by_char(&csv, '\n', &lines, 1);
+
+    // while (lines.len) {
+    //     str line = lines.data[0];
+    //     fxstr_arr_t columns = fxstr_arr_init(2);
+    //     size_t n = fxstr_split_by_char(&line, ',', 1);
+    //     while (columns.len) {
+    //         str column_str = columns.data[0];
+    //         if (columns.len > 1) {
+    //             columns = fxstr_split_by_char(columns.data[1], ',', 1);
+    //         }
+    //     }
+    //     if (lines.len > 1) {
+    //         lines = fxstr_split_by_char(lines.data[1], '\n', 1);
+    //     }
+    // }
+
+    return 0;
+}
+
+/// @brief Builds table from csv data
+/// @param tbl - table with cells
+/// @param csv - str with csv data
+/// @return 0 if no errors or non zero error code
+int build_table_dummy(Table* tbl, str csv) {
     size_t row_count = tbl->nrows = 4;
     size_t col_count = tbl->ncols = 3;
 
@@ -668,29 +690,29 @@ void evaluate_expr_cells(Table* tbl) {
     }
 }
 
-void print_usage(){
+void print_usage() {
     puts("usage: ./minicell <filename.csv>");
 }
 
 int main(int argc, char const* argv[argc]) {
-    if(argc != 2){
+    if (argc != 2) {
         fprintf(stderr, "Missing or invalid argument list. See -h for usage.\n");
         return EXIT_FAILURE;
     }
-    if(strcmp("-h", argv[1]) == 0){
+    if (strcmp("-h", argv[1]) == 0) {
         print_usage();
         return EXIT_SUCCESS;
     }
 
     str csv = read_csv(argv[1]);
-    if(csv.data == NULL){
+    if (csv.data == NULL) {
         return EXIT_FAILURE;
     }
     puts("csv:");
     fwrite(csv.data, 1, csv.len, stdout);
 
     Table tbl = {0};
-    if(read_table(&tbl, csv)){
+    if (build_table(&tbl, csv)) {
         return EXIT_FAILURE;
     }
     print_table(&tbl);

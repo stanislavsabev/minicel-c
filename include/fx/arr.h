@@ -2,19 +2,21 @@
 #ifndef FX_FXARR_H_
 #define FX_FXARR_H_
 
+#include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
-#ifndef fxarr_clib_free
-#define fxarr_clib_free free
+#ifndef fxarr_stdlib_free
+#define fxarr_stdlib_free free
 #endif
-#ifndef fxarr_clib_malloc
-#define fxarr_clib_malloc malloc
+#ifndef fxarr_stdlib_malloc
+#define fxarr_stdlib_malloc malloc
 #endif
-#ifndef fxarr_clib_calloc
-#define fxarr_clib_calloc calloc
+#ifndef fxarr_stdlib_calloc
+#define fxarr_stdlib_calloc calloc
 #endif
-#ifndef fxarr_clib_realloc
-#define fxarr_clib_realloc realloc
+#ifndef fxarr_stdlib_realloc
+#define fxarr_stdlib_realloc realloc
 #endif
 
 #define _FXARR_INITIAL_CAPACITY 8
@@ -31,7 +33,7 @@ typedef struct fxarr_meta_t {
  * @brief Declare the array type to be used.
  * @example fxarr_type(Point) points = NULL;
  */
-#define arr_type fxarr_type
+#define arr_type(type) fxarr_type(type)
 /**
  * @brief Define array of type <type> and name <name>.
  * The array is created with default initial capacity.
@@ -40,25 +42,25 @@ typedef struct fxarr_meta_t {
  * @example `fxarr_init(int, arr);`
  * @return void
  */
-#define arr_init fxarr_init
+#define arr_init(type, name) fxarr_init(type, name)
 /**
  * @brief Gets current capacity of the array.
  * @param arr the array
  * @return size_t - the array capacity
  */
-#define arr_capacity fxarr_capacity
+#define arr_capacity(arr) fxarr_capacity(arr)
 /**
  * @brief Gets the current length of the array.
  * @param arr the array
  * @return size_t - the array length
  */
-#define arr_len fxarr_len
+#define arr_len(arr) fxarr_len(arr)
 /**
  * @brief Returns non-zero if the array is empty.
  * @param arr the array
  * @return size_t - non-zero if empty, zero if non-empty
  */
-#define arr_is_empty fxarr_is_empty
+#define arr_is_empty(arr) fxarr_is_empty(arr)
 /**
  * @brief Grows the array to be at least <capacity> elements big.
  * If <capacity> is greater than the current capacity, the function
@@ -67,54 +69,54 @@ typedef struct fxarr_meta_t {
  * @param capacity size_t - minimum capacity for the array.
  * @return void
  */
-#define arr_reserve fxarr_reserve
+#define arr_reserve(arr, capacity) fxarr_reserve(arr, capacity)
 /**
  * @brief Clear all of the elements from the array.
  * @param arr the array
  * @return void
  */
-#define arr_clear fxarr_clear
+#define arr_clear(arr) fxarr_clear(arr)
 /**
  * @brief Frees the array memory.
  * NOTE: The array does not manage the memory its elements.
  * @param arr the array
  * @return void
  */
-#define arr_free fxarr_free
+#define arr_free(arr) fxarr_free(arr)
 /**
  * @brief Returns an iterator to first element of the array.
  * @param arr the array
  * @return pointer to the first element or NULL
  */
-#define arr_begin fxarr_begin
+#define arr_begin(arr) fxarr_begin(arr)
 /**
  * @brief Returns an iterator to one past the last element
  * of the array.
  * @param arr the array
  * @return pointer to one past the last element or NULL
  */
-#define arr_end fxarr_end
+#define arr_end(arr) fxarr_end(arr)
 /**
  * @brief Returns an iterator to the last element
  * of the array.
  * @param arr the array
  * @return pointer to the last element or NULL
  */
-#define arr_back fxarr_back
+#define arr_back(arr) fxarr_back(arr)
 /**
  * @brief Computes the capacity of the next grow.
  * Capacity is increased by multiples of 2.
  * @param capacity current capacity
  * @return size_t - capacity after next grow
  */
-#define arr_compute_next_grow fxarr_compute_next_grow
+#define arr_compute_next_grow(capacity) fxarr_compute_next_grow(capacity)
 /**
  * @brief Adds an element to the end of the array.
  * @param arr the array
  * @param value the value to add
  * @return void
  */
-#define arr_append fxarr_append
+#define arr_append(arr, value) fxarr_append(arr, value)
 /**
  * @brief Inserts element to the array at given <ix>.
  * @param arr the array
@@ -122,7 +124,7 @@ typedef struct fxarr_meta_t {
  * @param val value to be copied (or moved) to the inserted elements.
  * @return void
  */
-#define arr_insert fxarr_insert
+#define arr_insert(arr, ix, val) fxarr_insert(arr, ix, val)
 /**
  * @brief Removes the last element from the array, but copies it to
  * <elem_ptr> first.
@@ -130,7 +132,7 @@ typedef struct fxarr_meta_t {
  * @param elem_ptr pointer to receive the removed element
  * @return void
  */
-#define arr_pop fxarr_pop
+#define arr_pop(arr, elem_ptr) fxarr_pop(arr, elem_ptr)
 /**
  * @brief Removes the element at <ix> from the array.
  * @param arr the array
@@ -138,30 +140,22 @@ typedef struct fxarr_meta_t {
  * @param elem_ptr pointer to receive the removed element
  * @return void
  */
-#define arr_remove fxarr_remove
+#define arr_remove(arr, ix, elem_ptr) fxarr_remove(arr, ix, elem_ptr)
 /**
  * @brief Copy an array.
  * @param src the source array
  * @param dest the destination to copy to
  * @return void
  */
-#define arr_copy fxarr_copy
+#define arr_copy(src, dest) fxarr_copy(src, dest)
 
 #endif   // FX_NO_SHORT_NAMES
-
-// ------------------------------------------------------------------------------------------
-//  IMPLEMENTATION
-// ------------------------------------------------------------------------------------------
-#ifdef FX_IMPLEMENTATION
-
-#include <assert.h>
-#include <string.h>
 
 /**
  * @brief Declare the array type to be used.
  * @example fxarr_type(Point) points = NULL;
  */
-#define fxarr_type(type) type *
+#define fxarr_type(type) type*
 
 /**
  * @brief Define array of type <type> and name <name>.
@@ -171,21 +165,21 @@ typedef struct fxarr_meta_t {
  * @example `fxarr_init(int, arr);`
  * @return void
  */
-#define fxarr_init(type, name) type *name = NULL
+#define fxarr_init(type, name) type* name = NULL
 
 /**
  * @brief For internal use, converts an array pointer to fxarr_meta_t pointer.
  * @param arr the array
  * @return fxarr_meta_t * - pointer to the array meta data
  */
-#define _fxarr_arr_to_meta(arr) (&((fxarr_meta_t *)(arr))[-1])
+#define _fxarr_arr_to_meta(arr) (&((fxarr_meta_t*)(arr))[-1])
 
 /**
  * @brief For internal use, converts fxarr_meta_t pointer to array pointer.
  * @param ptr pointer to the fxarr_meta_t struct
  * @return pointer to the array
  */
-#define _fxarr_meta_to_arr(ptr) ((void *)&((fxarr_meta_t *)(ptr))[1])
+#define _fxarr_meta_to_arr(ptr) ((void*)&((fxarr_meta_t*)(ptr))[1])
 
 /**
  * @brief Gets current capacity of the array.
@@ -245,8 +239,8 @@ typedef struct fxarr_meta_t {
 #define fxarr_free(arr)                           \
     do {                                          \
         if (arr) {                                \
-            void *p1__ = _fxarr_arr_to_meta(arr); \
-            fxarr_clib_free(p1__);                \
+            void* p1__ = _fxarr_arr_to_meta(arr); \
+            fxarr_stdlib_free(p1__);              \
         }                                         \
     } while (0)
 
@@ -408,12 +402,12 @@ typedef struct fxarr_meta_t {
     do {                                                                              \
         const size_t fxarr_ln__ = (capacity) * sizeof(*(arr)) + sizeof(fxarr_meta_t); \
         if ((arr)) {                                                                  \
-            void *fxarr_p1__ = _fxarr_arr_to_meta(arr);                               \
-            void *fxarr_p2__ = fxarr_clib_realloc(fxarr_p1__, fxarr_ln__);            \
+            void* fxarr_p1__ = _fxarr_arr_to_meta(arr);                               \
+            void* fxarr_p2__ = fxarr_stdlib_realloc(fxarr_p1__, fxarr_ln__);          \
             assert(fxarr_p2__);                                                       \
             (arr) = _fxarr_meta_to_arr(fxarr_p2__);                                   \
         } else {                                                                      \
-            void *fxarr_p__ = fxarr_clib_malloc(fxarr_ln__);                          \
+            void* fxarr_p__ = fxarr_stdlib_malloc(fxarr_ln__);                        \
             assert(fxarr_p__);                                                        \
             (arr) = _fxarr_meta_to_arr(fxarr_p__);                                    \
             _fxarr_set_len((arr), 0);                                                 \
@@ -421,5 +415,4 @@ typedef struct fxarr_meta_t {
         _fxarr_set_capacity((arr), (capacity));                                       \
     } while (0)
 
-#endif   // FX_IMPLEMENTATION
-#endif   /* FX_FXARR_H_ */
+#endif /* FX_FXARR_H_ */
