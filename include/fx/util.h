@@ -2,6 +2,7 @@
 #ifndef FX_FXUTIL_H_
 #define FX_FXUTIL_H_
 
+#include <stdlib.h>
 #include <stdbool.h>
 
 #ifndef FX_NO_SHORT_NAMES
@@ -11,6 +12,7 @@
 #define true_false(b)                         fx_true_false(b)
 #define one_zero(b)                           fx_one_zero(b)
 #define rept_literal(hundreds, tens, ones, s) fx_rept_literal(hundreds, tens, ones, s)
+#define memmem(hay, hlen, needle, nlen)       fx_memmem(hay, hlen, needle, nlen)
 
 #endif   // FX_NO_SHORT_NAMES
 
@@ -65,11 +67,11 @@
         fprintf(__stream, __format, __VA_ARGS__); \
     } while (false)
 #else
-#define dprintf(...) \
+#define dprintf(__format, ...) \
     do {             \
     } while (false)
 
-#define dfprintf(...) \
+#define dfprintf(__stream, __format, ...) \
     do {              \
     } while (false)
 #endif
@@ -85,5 +87,15 @@ static inline const char* fx_true_false(bool b) {
 static inline const char* fx_one_zero(bool b) {
     return b ? "1" : "0";
 }
+
+/**
+ * @brief Finds the start of the first occurrence of the substring 'needle' in string 'hay'.
+ * @param hay string to search
+ * @param hlen haystack len
+ * @param needle substr to find
+ * @param nlen needle len
+ * @returns pointer to the beginning of the sub-string, or NULL.
+ */
+void* fx_memmem(const void* hay, size_t hlen, const void* needle, size_t nlen);
 
 #endif   // FX_FXUTIL_H_
