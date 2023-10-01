@@ -34,7 +34,7 @@ DFLAGS := $(addprefix -D,$(DFLAGS))
 
 all: debug ## Default rule
 
-b: build
+b: build ##
 build: debug ## Build current target
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
@@ -86,6 +86,7 @@ src_fxlib:
 check: ## Run valgrind memory sanitizer
 	@valgrind --undef-value-errors=no  $(BIN_DIR)/$(TARGET)
 
+f: format ##
 format: ## Format with clang-format
 	@clang-format -i $(SRCS)
 
@@ -95,4 +96,4 @@ help: ## Show this message
     /^[a-zA-Z_-]+:.*?##/ { if(length($$2) == 0 ) { printf "\033[36m%7s\033[0m", $$1 } \
 							  else { printf "\t\033[36m%-10s\033[0m %s\n", $$1, $$2 }}' $(MAKEFILE_LIST)
 
-.PHONY: build headers db debug ndb nodebug release rb rebuild r run c clean makedirs libs check format h help 
+.PHONY: build headers db debug ndb nodebug release rb rebuild r run c clean makedirs libs check f format h help 
