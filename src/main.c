@@ -6,7 +6,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define FXSTR_IMPLEMENTATION
 #include "fx/arr.h"
 #include "fx/str.h"
 #include "fx/util.h"
@@ -117,7 +116,7 @@ Cell create_cell(size_t row, size_t col, size_t row_count, Table* tbl) {
     return cell;
 }
 
-str read_csv(const char* file_name) {
+str_buf_t read_csv(const char* file_name) {
     char* buff = NULL;
     long len = 0;
     FILE* fp = fopen(file_name, "rb");
@@ -147,7 +146,8 @@ str read_csv(const char* file_name) {
     assert(read == (size_t)len);
 
     fclose(fp);
-    return (str){.data = buff, .len = len};
+    return strb_acquire(&buff, len);
+
 error:
     if (fp) {
         fclose(fp);
@@ -157,33 +157,26 @@ error:
         buff = NULL;
     }
     fprintf(stderr, "Error reading file %s.", file_name);
-    return str_null();
+    return strb_null();
 }
 
 /// @brief Builds table from csv data
 /// @param tbl - table with cells
 /// @param csv - str with csv data
 /// @return 0 if no errors or non zero error code
-int build_table(Table* tbl, str csv) {
+int build_table(Table* tbl, str_view_t csv) {
     arr_init(Cell, cells);
     arr_init(Expr, exprs);
-    fxstr_arr_t lines = fxstr_arr_init(2);
-    size_t n_line = fxstr_split_by_char(&csv, '\n', &lines, 1);
+    str_view_t line = str_lsplit_chr(&csv, '\n');
 
-    // while (lines.len) {
-    //     str line = lines.data[0];
-    //     fxstr_arr_t columns = fxstr_arr_init(2);
-    //     size_t n = fxstr_split_by_char(&line, ',', 1);
-    //     while (columns.len) {
-    //         str column_str = columns.data[0];
-    //         if (columns.len > 1) {
-    //             columns = fxstr_split_by_char(columns.data[1], ',', 1);
-    //         }
-    //     }
-    //     if (lines.len > 1) {
-    //         lines = fxstr_split_by_char(lines.data[1], '\n', 1);
-    //     }
-    // }
+    while (!str_is_null(&line)) {
+        str_view_t column = str_lsplit_chr(&line, ',');
+
+        while (!str_is_null(&column)) {
+            column = str_lsplit_chr(&line, ',');
+        }
+        line = str_lsplit_chr(&csv, '\n');
+    }
 
     return 0;
 }
@@ -192,7 +185,7 @@ int build_table(Table* tbl, str csv) {
 /// @param tbl - table with cells
 /// @param csv - str with csv data
 /// @return 0 if no errors or non zero error code
-int build_table_dummy(Table* tbl, str csv) {
+int build_table_dummy(Table* tbl, str_view_t csv) {
     size_t row_count = tbl->nrows = 4;
     size_t col_count = tbl->ncols = 3;
 
@@ -704,7 +697,7 @@ int main(int argc, char const* argv[argc]) {
         return EXIT_SUCCESS;
     }
 
-    str csv = read_csv(argv[1]);
+    str_buf_t csv = read_csv(argv[1]);
     if (csv.data == NULL) {
         return EXIT_FAILURE;
     }
@@ -712,7 +705,7 @@ int main(int argc, char const* argv[argc]) {
     fwrite(csv.data, 1, csv.len, stdout);
 
     Table tbl = {0};
-    if (build_table(&tbl, csv)) {
+    if (build_table(&tbl, strb_to_str_view(&csv))) {
         return EXIT_FAILURE;
     }
     print_table(&tbl);
