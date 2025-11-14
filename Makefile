@@ -32,16 +32,16 @@ default_:
 
 .PHONY: b build
 b: build ##
-build: makedirs Makefile ## Build current target
+build: makedirs $(TARGET) ## Build current target
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -I$(INC_DIR) -c $^ -o $@
+	$(CC) $(CFLAGS) -c $^ -o $@
 
 $(TARGET): $(OBJS) headers
-	$(CC) $(CFLAGS) $(OBJS) -o $(BIN_DIR)/$(TARGET) -I$(INC_DIR) -L$(LIB_DIR) -l:$(LIBFXC)
+	$(CC) $(CFLAGS) $(OBJS) -o $(BIN_DIR)/$(TARGET)
 
 .PHONY: headers
-headers: $(SRC_HEADERS) $(INC_HEADERS)
+headers: $(SRC_HEADERS)
 
 .PHONY: rb rebuild
 rb: rebuild ##
@@ -63,7 +63,7 @@ makedirs: ## Create build directories
 .PHONY: f format
 f: format ##
 format: ## Format with clang-format
-	@clang-format -i $(SRCS)
+	@clang-format -i $(SRCS) $(SRC_HEADERS)
 
 .PHONY: h help
 h: help ##
