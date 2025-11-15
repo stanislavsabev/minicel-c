@@ -1,6 +1,6 @@
 # Compiler Flags
 CC = gcc
-STD = -std=c17
+STD = -std=c11
 CFLAGS = -Wall -Wextra 
 CFLAGS += -Wno-unused-variable
 CFLAGS += -Wno-unused-parameter
@@ -26,8 +26,8 @@ SRC_HEADERS=$(wildcard $(SRC_DIR)/*.h)
 OBJS=$(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 DFLAGS := $(addprefix -D,$(DFLAGS))
 
-.PHONY: default_
-default_:
+.PHONY: all
+all:
 	@echo "Missing target. Use 'make help' to see details."
 
 .PHONY: b build
@@ -52,11 +52,17 @@ r: run ##
 run: ## Run current target
 	@$(BIN_DIR)/$(TARGET) ./input.csv
 
+.PHONY: br rbr
+br: build run ## Build and run
+rbr: rebuild run ## Rebuild and run
+
 .PHONY: c clean
 c: clean ##
 clean: ## Clean up build directories
 	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/*
 
+.PHONY: md makedirs
+md: makedirs ##
 makedirs: ## Create build directories
 	@mkdir -p $(OBJ_DIR) $(BIN_DIR)
 
