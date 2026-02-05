@@ -1,6 +1,6 @@
 # Compiler Flags
 CC = gcc
-STD = -std=c17
+STD = -std=c99
 CFLAGS = -Wall -Wextra 
 CFLAGS += -Wno-unused-variable
 CFLAGS += -Wno-unused-parameter
@@ -85,6 +85,9 @@ src_fxlib:
 
 check: ## Run valgrind memory sanitizer
 	@valgrind --undef-value-errors=no  $(BIN_DIR)/$(TARGET)
+
+sync:
+	python scripts/sync_declarations.py src/fx.h 
 
 f: format ##
 format: ## Format with clang-format
