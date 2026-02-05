@@ -39,12 +39,7 @@ typedef ptrdiff_t pdiff;
 #define MEM_DEFAULT_ALIGNMENT (2 * sizeof(void*))
 #endif
 
-// MACROS
-#define alignof(type) __alignof__(type)
-
-#define mem_zero(ptr, size) memset((ptr), 0, (size))
-
-// MEMORY - ARENAS
+// ARENA structs
 typedef struct Arena {
     u8* buffer;
     u64 buffer_size;
@@ -68,6 +63,11 @@ typedef struct StrView {
     const char* data;
 } StrView;
 
+// ARRAY
+typedef struct Array {
+    usize len;
+    void* data;
+} Array;
 
 // fn DECLARATION
 #define fn
@@ -83,21 +83,28 @@ fn void arena_snapshot_restore(ArenaSnapshot snapshot);
 fn void* arena_alloc(Arena* arena, u64 size);
 fn String* arena_alloc_string(Arena *arena, usize capacity);
 fn size_t arena_remaining(Arena* arena);
+fn StrView strv_from_cstr(const char* cstr);
 
 // END fn DECLARATION
 
-// arena_alloc helpers
+// MACROS
+#define alignof(type) __alignof__(type)
+#define mem_zero(ptr, size) memset((ptr), 0, (size))
+
+// Arena helpers 
 #define arena_alloc_struct(arena, Type) \
-    (Type *)arena_alloc((arena), sizeof(Type))
+(Type *)arena_alloc((arena), sizeof(Type))
 
-StrView strv_from_cstr(const char* cstr);
-#define Lit(cstr)
+// String helpers
+#define STRV_NULL  (StrView){0}
+#define STRV_EMPTY (StrView){.data = "", .len = 0}
 
-// ARRAY
-typedef struct Array {
-    usize len;
-    void* data;
-} Array;
+#define Literal(cstr) strv_from_cstr((cstr))
+#define strv_is_null(sv) ((sv).data == NULL)
+#define strv_is_empty(sv) ((sv).len == 0)
+#define strv_is_null_or_empty(sv)  strv_is_null(sv) || strv_is_empty(sv)
+
+#define str_alloc(arena, capacity) arena_alloc_string((arena), (capacity))
 
 // HASH TABLE
 // - TBD
@@ -109,6 +116,7 @@ fn b8 mem_is_power_of_two(u64 value) {
     return (value & (value - 1)) == 0;
 }
 
+// Arena Implementation
 #include <assert.h>
 
 fn u64 mem_align_forward(u64 ptr, u64 alignment) {
@@ -152,7 +160,6 @@ fn void* arena_alloc(Arena* arena, u64 size) {
     return arena_alloc_align(arena, size, MEM_DEFAULT_ALIGNMENT, true);
 }
 
-
 fn String* arena_alloc_string(Arena *arena, usize capacity) {
     String* str = (String *)arena_alloc((arena), sizeof(String));
     if (str) {
@@ -191,6 +198,13 @@ fn void arena_snapshot_restore(ArenaSnapshot snapshot) {
     Arena* arena = snapshot.arena;
     arena->offset = snapshot.offset;
 }
+
+// String implementation
+fn StrView strv_from_cstr(const char* cstr) {
+    if (cstr == NULL) return STRV_NULL;
+    return (StrView){.data = cstr, .len = strlen(cstr)};
+}
+
 
 #endif   // FX_IMPLEMENTATION
 #endif   // __FX_LIB__
