@@ -41,7 +41,7 @@ def extract_function_name(declaration: str) -> str | None:
     """Extract the function name from a declaration."""
     # Match function name: word immediately before the opening paren
     # Handles pointer returns like: void* arena_alloc(...)
-    pattern = r'(\w+)\s*\('
+    pattern = r"(\w+)\s*\("
     match = re.search(pattern, declaration)
     return match.group(1) if match else None
 
@@ -62,8 +62,7 @@ def find_declaration_section(lines: list[str]) -> tuple[int, int]:
             start = i
 
         if re.match(section_end_pattern, line.strip()):
-
-            end = i - 1
+            end = i
             break
 
     if start is None or end is None:
@@ -96,9 +95,9 @@ def find_implementation_section(lines: list[str]) -> tuple[int, int]:
 
 def get_existing_declarations(
     lines: list[str], decl_start: int, decl_end: int
-) -> set[str]:
-    """Get set of function names already declared."""
-    declared = set()
+) -> dict[str, str]:
+    """Get dict mapping function names to their full declarations."""
+    declared = {}
 
     for i in range(decl_start, decl_end):
         line = lines[i].strip()
@@ -107,9 +106,22 @@ def get_existing_declarations(
             continue
 
         name = extract_function_name(line)
+        full_line = handle_multiline_definition(lines, i, decl_end, sentinel=";")
         if name:
-            declared.add(name)
+            declared[name] = full_line
     return declared
+
+
+def handle_multiline_definition(
+    lines: list[str], start: int, end: int, sentinel: str
+) -> str:
+    full_line = lines[start]
+    j = start
+    while sentinel not in full_line and j < end - 1:
+        j += 1
+        full_line += " " + lines[j].strip()
+    full_line = full_line.split(sentinel, maxsplit=1)[0] + sentinel
+    return full_line
 
 
 def get_function_definitions(
@@ -129,12 +141,7 @@ def get_function_definitions(
             continue
 
         # Handle multi-line function signatures
-        full_line = line
-        j = i
-        while "{" not in full_line and j < impl_end - 1:
-            j += 1
-            full_line += " " + lines[j].strip()
-
+        full_line = handle_multiline_definition(lines, i, impl_end, "{")
         if (declaration := parse_function_signature(full_line)) and (
             name := extract_function_name(declaration)
         ):
@@ -143,10 +150,67 @@ def get_function_definitions(
     return definitions
 
 
-def sync_declarations(filepath: Path) -> tuple[str, list[str]]:
+def extract_return_type(declaration: str) -> str:
+    """Extract the return type from a declaration."""
+    pattern = r"^fn\s+(.+?)\s*\w+\s*\("
+    match = re.match(pattern, declaration.rstrip(";"))
+    return match.group(1).strip() if match else "void"
+
+
+def generate_stub_implementation(name, declaration: str) -> list[str]:
+    """
+    Generate a stub implementation for a declaration.
+    Returns list of lines for the stub.
+    """
+    signature = declaration.rstrip(";").strip()
+    func_name = name
+    return_type = extract_return_type(declaration)
+
+    lines = [
+        "",
+        "// TODO: not implemented",
+        f"fn {signature} {{",
+        f'    assert(0 && "{func_name} not implemented");',
+    ]
+
+    # Add return statement based on return type
+    if return_type == "void":
+        pass
+    elif "*" in return_type:
+        lines.append("    return NULL;")
+    elif return_type in ("b8", "b16", "b32", "b64", "bool"):
+        lines.append("    return false;")
+    elif return_type in (
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "i8",
+        "i16",
+        "i32",
+        "i64",
+        "int",
+        "unsigned",
+        "long",
+        "size_t",
+        "usize",
+        "f32",
+        "f64",
+    ):
+        lines.append("    return 0;")
+    else:
+        # For structs or unknown types, return zeroed value
+        lines.append(f"    return ({return_type}){{0}};")
+
+    lines.append("}")
+    lines.append("")
+    return lines
+
+
+def sync_declarations(filepath: Path) -> tuple[str, list[str], list[str]]:
     """
     Sync declarations in the file.
-    Returns (updated_content, list_of_added_declarations).
+    Returns tuple (updated_content, list_of_added_declarations, list_of_added_impl_stubs).
     """
     content = filepath.read_text()
     lines = content.splitlines(keepends=True)
@@ -157,35 +221,61 @@ def sync_declarations(filepath: Path) -> tuple[str, list[str]]:
     decl_start, decl_end = find_declaration_section(lines_stripped)
     impl_start, impl_end = find_implementation_section(lines_stripped)
 
-    existing = get_existing_declarations(lines_stripped, decl_start, decl_end)
-    definitions = get_function_definitions(lines_stripped, impl_start, impl_end)
+    existing_decls = get_existing_declarations(lines_stripped, decl_start, decl_end)
+    existing_impls = get_function_definitions(lines_stripped, impl_start, impl_end)
 
-    # Find missing declarations
-    missing = []
-    for name, declaration in definitions:
-        if name not in existing:
-            missing.append(declaration)
+    # Direction 1: Find definitions missing declarations
+    missing_decls = []
+    for name, declaration in existing_impls:
+        if name not in existing_decls:
+            missing_decls.append(declaration)
 
-    if not missing:
-        return content, []
+    # Direction 2: Find declarations missing implementations
+    missing_impls = []
+    implemented = set(name for name, _ in existing_impls)
+    for name, declaration in existing_decls.items():
+        if name not in implemented:
+            missing_impls.append((name, declaration))
 
-    # Find insertion point (just before the blank line or macro after declarations)
-    insert_line = decl_end
+    if not missing_decls and not missing_impls:
+        return content, [], []
 
-    # Look backwards from decl_end to find proper insertion point
-    for i in range(decl_end - 1, decl_start, -1):
-        line = lines_stripped[i].strip()
-        if line and not line.startswith("#") and not line.startswith("//"):
-            insert_line = i + 1
-            break
+    # Start adding lines from the bottom
 
-    # Build new content
-    new_lines = lines_stripped[:insert_line]
-    for decl in missing:
-        new_lines.append(decl)
-    new_lines.extend(lines_stripped[insert_line:])
+    # Direction 2: Add missing implementations
+    if missing_impls:
+        insert_line = impl_end
 
-    return "\n".join(new_lines) + "\n", missing
+        new_lines = lines_stripped[:insert_line]
+        for name, declaration in missing_impls:
+            stub_lines = generate_stub_implementation(name, declaration)
+            new_lines.extend(stub_lines)
+        new_lines.extend(lines_stripped[insert_line:])
+        lines_stripped = new_lines
+
+    # Direction 1: Add missing declarations
+    if missing_decls:
+        insert_line = decl_end
+
+        # Look backwards from decl_end to find proper insertion point
+        for i in range(decl_end - 1, decl_start, -1):
+            line = lines_stripped[i].strip()
+            if line and not line.startswith("#") and not line.startswith("//"):
+                insert_line = i + 1
+                break
+
+        # Build new content
+        new_lines = lines_stripped[:insert_line]
+        for decl in missing_decls:
+            new_lines.append(decl)
+        new_lines.extend(lines_stripped[insert_line:])
+        lines_stripped = new_lines
+
+    return (
+        "\n".join(lines_stripped) + "\n",
+        missing_decls,
+        [declaration for _, declaration in missing_impls],
+    )
 
 
 def main():
@@ -200,15 +290,21 @@ def main():
 
     print(f"Processing: {filepath}")
 
-    updated_content, added = sync_declarations(filepath)
+    updated_content, added_decls, added_impls = sync_declarations(filepath)
 
-    if not added:
+    if not added_decls and not added_impls:
         print("All function definitions already have declarations.")
         return
 
-    print(f"\nAdding {len(added)} missing declaration(s):")
-    for decl in added:
-        print(f"  {decl}")
+    if added_decls:
+        print(f"\nAdded {len(added_decls)} missing declaration(s):")
+        for decl in added_decls:
+            print(f"  {decl}")
+
+    if added_impls:
+        print(f"\nAdded {len(added_impls)} missing definitions(s):")
+        for decl in added_impls:
+            print(f"  {decl}")
 
     # Write to output location
     output_path = Path(filepath)

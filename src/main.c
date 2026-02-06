@@ -727,3 +727,20 @@ int main(int argc, char const *argv[argc]) {
 
   return EXIT_SUCCESS;
 }
+
+
+
+// TODO: SAVE
+fn size_t arena_remaining(Arena* arena);
+
+
+fn void arena_snapshot_restore(ArenaSnapshot snapshot) {
+    Arena* arena = snapshot.arena;
+    arena->offset = snapshot.offset;
+}
+
+// String implementation
+fn StrView strv_from_cstr(const char* cstr) {
+    if (cstr == NULL) return STRV_NULL;
+    return (StrView){.data = cstr, .len = strlen(cstr)};
+}

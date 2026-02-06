@@ -74,15 +74,17 @@ typedef struct Array {
 
 fn b8 mem_is_power_of_two(u64 value);
 fn u64 mem_align_forward(u64 ptr, u64 alignment);
+
 fn void arena_init(Arena* a, void* buffer, u64 capacity);
 fn void* arena_alloc_align(Arena* arena, u64 size, u64 alignment, b32 set_zero);
 fn void arena_free(Arena* arena);
 fn void arena_reset(Arena* arena);
+fn size_t arena_remaining(Arena* arena);
 fn ArenaSnapshot arena_snapshot_save(Arena* arena);
 fn void arena_snapshot_restore(ArenaSnapshot snapshot);
 fn void* arena_alloc(Arena* arena, u64 size);
 fn String* arena_alloc_string(Arena *arena, usize capacity);
-fn size_t arena_remaining(Arena* arena);
+
 fn StrView strv_from_cstr(const char* cstr);
 
 // END fn DECLARATION
@@ -132,11 +134,13 @@ fn u64 mem_align_forward(u64 ptr, u64 alignment) {
     return p;
 }
 
+
 fn void arena_init(Arena* a, void* buffer, u64 capacity) {
     a->buffer = (u8*)buffer;
     a->buffer_size = capacity;
     a->offset = 0;
 }
+
 
 fn void* arena_alloc_align(Arena* arena, u64 size, u64 alignment, b32 set_zero) {
     up64 curr_ptr = (up64)(arena->buffer + arena->offset);
@@ -156,9 +160,11 @@ fn void* arena_alloc_align(Arena* arena, u64 size, u64 alignment, b32 set_zero) 
     return ptr;
 }
 
+
 fn void* arena_alloc(Arena* arena, u64 size) {
     return arena_alloc_align(arena, size, MEM_DEFAULT_ALIGNMENT, true);
 }
+
 
 fn String* arena_alloc_string(Arena *arena, usize capacity) {
     String* str = (String *)arena_alloc((arena), sizeof(String));
@@ -174,18 +180,23 @@ fn String* arena_alloc_string(Arena *arena, usize capacity) {
     return str;
 }
 
+
 fn void arena_free(Arena* arena) {
     // No-op, as we don't manage heap memory in the arena
     (void)arena;
 }
 
+
 // Get remaining space in arena
 fn size_t arena_remaining(Arena* arena) {
     return arena->buffer_size - arena->offset;
 }
+
+
 fn void arena_reset(Arena* arena) {
     arena->offset = 0;
 }
+
 
 fn ArenaSnapshot arena_snapshot_save(Arena* arena) {
     ArenaSnapshot snapshot;
@@ -193,6 +204,7 @@ fn ArenaSnapshot arena_snapshot_save(Arena* arena) {
     snapshot.offset = arena->offset;
     return snapshot;
 }
+
 
 fn void arena_snapshot_restore(ArenaSnapshot snapshot) {
     Arena* arena = snapshot.arena;
@@ -204,7 +216,6 @@ fn StrView strv_from_cstr(const char* cstr) {
     if (cstr == NULL) return STRV_NULL;
     return (StrView){.data = cstr, .len = strlen(cstr)};
 }
-
 
 #endif   // FX_IMPLEMENTATION
 #endif   // __FX_LIB__
