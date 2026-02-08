@@ -183,10 +183,10 @@ int build_table(Table *tbl, StrView csv) {
     ArrayCells cells[MAX_ROWS * MAX_COLUMNS] = {0};
     ArrayExprs exprs[MAX_ROWS * MAX_COLUMNS] = {0};
 
-    StrView line = strv_split_next(&csv, '\n');
+    StrView line = sv_split_next(&csv, '\n');
 
-    while (!strv_is_empty(&line)) {
-        StrView column = str_lsplit_chr(&line, ',');
+    while (!strv_is_empty(line)) {
+        StrView column = sv_split_next(&line, ',');
 
         while (!str_is_null(&column)) {
             column = str_lsplit_chr(&line, ',');

@@ -183,7 +183,7 @@ fn void *arena_alloc(Arena *arena, u64 size);
 
 // Create a StrView from a null-terminated C string
 // Returns STRV_NULL if cstr is NULL
-fn StrView strv_from_cstr(const char *cstr);
+fn StrView sv_from_cstr(const char *cstr);
 
 // Create an immutable view of a String
 fn StrView str_to_strv(const String *str);
@@ -194,95 +194,95 @@ fn String *str_create(Arena *arena, usize len);
 
 // STRVIEW OPERATIONS (immutable, zero-copy)
 // Check if StrView is null (data pointer is NULL)
-fn b8 strv_is_null(StrView strv);
+fn b8 sv_is_null(StrView sv);
 
 // Check if StrView is empty (len == 0)
-fn b8 strv_is_empty(StrView strv);
+fn b8 sv_is_empty(StrView sv);
 
 // Check if StrView is null or empty
-fn b8 strv_is_null_or_empty(StrView strv);
+fn b8 sv_is_null_or_empty(StrView sv);
 
 // Compare two StrViews for equality
-fn b8 strv_eq(StrView left, StrView right);
+fn b8 sv_eq(StrView left, StrView right);
 
 // Compare StrView with null-terminated C string for equality
-fn b8 strv_eq_cstr(StrView left, const char *right);
+fn b8 sv_eq_cstr(StrView left, const char *right);
 
 // Check if StrView starts with a given prefix
-fn b8 strv_starts_with(StrView strv, StrView prefix);
+fn b8 sv_starts_with(StrView sv, StrView prefix);
 
 // Check if StrView ends with a given suffix
-fn b8 strv_ends_with(StrView strv, StrView suffix);
+fn b8 sv_ends_with(StrView sv, StrView suffix);
 
 // Trim leading and trailing whitespace from StrView
 // Returns new StrView with same underlying data
-fn StrView strv_trim(StrView strv);
+fn StrView sv_trim(StrView sv);
 
 // Trim leading whitespace from StrView
 // Returns new StrView with same underlying data
-fn StrView strv_ltrim(StrView strv);
+fn StrView sv_ltrim(StrView sv);
 
 // Trim trailing whitespace from StrView
 // Returns new StrView with same underlying data
-fn StrView strv_rtrim(StrView strv);
+fn StrView sv_rtrim(StrView sv);
 
 // Trim sub-string from a string
 // Returns new StrView with same underlying data
-fn StrView strv_trim_str(StrView strv, StrView trim);
+fn StrView sv_trim_str(StrView sv, StrView trim);
 
 // Trim left sub-string from a string
 // Returns new StrView with same underlying data
-fn StrView strv_ltrim_str(StrView strv, StrView trim);
+fn StrView sv_ltrim_str(StrView sv, StrView trim);
 
 // Trim right sub-string from a string
 // Returns new StrView with same underlying data
-fn StrView strv_rtrim_str(StrView strv, StrView trim);
+fn StrView sv_rtrim_str(StrView sv, StrView trim);
 
 // Find first occurrence of needle in hay
 // Returns hay.len if not found
-fn usize strv_find(StrView hay, StrView needle);
+fn usize sv_find(StrView hay, StrView needle);
 
 // Find first occurrence of char needle in hay
 // Returns hay.len if not found
-fn usize strv_find_char(StrView hay, char needle);
+fn usize sv_find_char(StrView hay, char needle);
 
 // Find first occurrence of needle in hay, searching from right to left
 // Returns hay.len if not found
-fn usize strv_rfind(StrView hay, StrView needle);
+fn usize sv_rfind(StrView hay, StrView needle);
 
 // Find first occurrence of char needle in hay, searching from right to left
 // Returns hay.len if not found
-fn usize strv_rfind_char(StrView hay, char needle);
+fn usize sv_rfind_char(StrView hay, char needle);
 
 // Check if needle contains hay
 // Returns bool
-fn b8 strv_contains(StrView hay, StrView needle);
+fn b8 sv_contains(StrView hay, StrView needle);
 
 // Split StrView on delimiter and advance remaining pointer
 // Returns the token before delimiter,
 //  STRV_NULL if remaining is NULL or STRV_NULL
-fn StrView strv_split_next(StrView *remaining, char delimiter);
+fn StrView sv_split_next(StrView *remaining, char delimiter);
 
 // Split StrView on sub-string delimiter and advance remaining pointer
 // Returns: the token before delimiter
-fn StrView strv_split_next_str(StrView *remaining, StrView delimiter);
+fn StrView sv_split_next_str(StrView *remaining, StrView delimiter);
 
 // STRING OPERATIONS (mutable)
 // Append a StrView to a String if space available
 // Returns true on success, false if capacity exceeded
-fn b8 strb_append(StringBuilder *strb, StrView strv);
+fn b8 strb_append(StringBuilder *sb, StrView sv);
 
 // Append a single character to String if space available
 // Returns true on success, false if capacity exceeded
-fn b8 strb_append_char(StringBuilder *strb, char c);
+fn b8 strb_append_char(StringBuilder *sb, char c);
 
 // Append a null-terminated C string to String if space available
 // Returns true on success, false if capacity exceeded
-fn b8 strb_append_cstr(StringBuilder *strb, const char *cstr);
+fn b8 strb_append_cstr(StringBuilder *sb, const char *cstr);
 
 // Clear String contents (sets len to 0, preserves capacity)
 // Returns true on success
-fn b8 strb_reset(StringBuilder *strb);
+fn b8 strb_reset(StringBuilder *sb);
 
 // Copy StrView contents into String, replacing existing data
 // Returns true on success, false if capacity exceeded
@@ -297,7 +297,7 @@ fn String *str_from_cstr(Arena *arena, const char *cstr);
 
 // Create a String from StrView, allocating from arena
 // Returns NULL if sv is null or allocation fails
-fn String *str_from_strv(Arena *arena, StrView strv);
+fn String *str_from_strv(Arena *arena, StrView sv);
 // END fn DECLARATION
 
 // Arena helpers
@@ -309,7 +309,7 @@ fn String *str_from_strv(Arena *arena, StrView strv);
 #define STRV_EMPTY                                                                                 \
     (StrView) { .data = "", .len = 0 }
 
-#define STRV_LIT(cstr) strv_from_cstr((cstr))
+#define STRV_LIT(cstr) sv_from_cstr((cstr))
 
 // HASH TABLE
 // - TBD
@@ -389,9 +389,9 @@ fn void arena_snapshot_restore(ArenaSnapshot snapshot) {
 }
 
 // String implementation
-fn b8 strv_is_null(StrView strv) { return strv.data == NULL; }
-fn b8 strv_is_empty(StrView strv) { return strv.len == 0; }
-fn b8 strv_is_null_or_empty(StrView strv) { return (strv_is_null(strv) || strv_is_empty(strv)); }
+fn b8 sv_is_null(StrView sv) { return sv.data == NULL; }
+fn b8 sv_is_empty(StrView sv) { return sv.data == NULL || sv.len == 0; }
+fn b8 sv_is_null_or_empty(StrView sv) { return (strv_is_null(sv) || sv_is_empty(sv)); }
 
 fn String *str_create(Arena *arena, usize len) {
     u8 *mem = (u8 *)arena_alloc((arena), sizeof(String) + len);
@@ -431,17 +431,17 @@ fn String *str_from_cstr(Arena *arena, const char *cstr) {
     return str;
 }
 
-fn String *str_from_strv(Arena *arena, StrView strv) {
-    if (strv_is_null(strv))
+fn String *str_from_strv(Arena *arena, StrView sv) {
+    if (strv_is_null(sv))
         return NULL;
-    String *str = str_create(arena, strv.len);
+    String *str = str_create(arena, sv.len);
     if (!str)
         return NULL;
-    memcpy(str->data, strv.data, strv.len);
+    memcpy(str->data, sv.data, sv.len);
     return str;
 }
 
-fn StrView strv_from_cstr(const char *cstr) {
+fn StrView sv_from_cstr(const char *cstr) {
     if (cstr == NULL)
         return STRV_NULL;
     return (StrView){.data = cstr, .len = strlen(cstr)};
@@ -449,7 +449,7 @@ fn StrView strv_from_cstr(const char *cstr) {
 
 fn StrView str_to_strv(const String *str) { return (StrView){.data = str->data, .len = str->len}; }
 
-fn b8 strv_eq(StrView left, StrView right) {
+fn b8 sv_eq(StrView left, StrView right) {
     if (left.len != right.len)
         return false;
     if (left.data == right.data) // same data pointer
@@ -459,107 +459,107 @@ fn b8 strv_eq(StrView left, StrView right) {
     return memcmp(left.data, right.data, left.len) == 0;
 }
 
-fn b8 strv_eq_cstr(StrView left, const char *right) {
-    StrView r = strv_from_cstr(right);
-    return strv_eq(left, r);
+fn b8 sv_eq_cstr(StrView left, const char *right) {
+    StrView r = sv_from_cstr(right);
+    return sv_eq(left, r);
 }
 
-fn b8 strv_starts_with(StrView strv, StrView prefix) {
-    if (strv_is_null_or_empty(strv) || strv_is_null_or_empty(prefix)) {
+fn b8 sv_starts_with(StrView sv, StrView prefix) {
+    if (strv_is_null_or_empty(sv) || sv_is_null_or_empty(prefix)) {
         return false;
     }
-    if (strv.len < prefix.len) {
+    if (sv.len < prefix.len) {
         return false;
     }
-    if (strv.data == prefix.data) {
+    if (sv.data == prefix.data) {
         // same data pointer
         return true;
     }
-    return memcmp(strv.data, prefix.data, prefix.len) == 0;
+    return memcmp(sv.data, prefix.data, prefix.len) == 0;
 }
 
-fn b8 strv_ends_with(StrView strv, StrView suffix) {
-    if (strv_is_null_or_empty(strv) || strv_is_null_or_empty(suffix)) {
+fn b8 sv_ends_with(StrView sv, StrView suffix) {
+    if (strv_is_null_or_empty(sv) || sv_is_null_or_empty(suffix)) {
         return false;
     }
-    if (strv.len < suffix.len) {
+    if (sv.len < suffix.len) {
         return false;
     }
-    if (strv.data == suffix.data) {
+    if (sv.data == suffix.data) {
         // same data pointer
         return true;
     }
-    return memcmp(strv.data + (strv.len - suffix.len), suffix.data, suffix.len) == 0;
+    return memcmp(sv.data + (sv.len - suffix.len), suffix.data, suffix.len) == 0;
 }
 
 // TODO: not implemented
-fn usize strv_find(StrView hay, StrView needle) {
-    assert(0 && "not implemented");
+fn usize sv_find(StrView hay, StrView needle) {
+    FX_ASSERT_MSG(0, "not implemented");
     return hay.len;
 }
 
 // TODO: not implemented
-fn usize strv_find_char(StrView hay, char needle) {
-    assert(0 && " not implemented");
+fn usize sv_find_char(StrView hay, char needle) {
+    FX_ASSERT_MSG(0, "not implemented");
     return 0;
 }
 
 // TODO: not implemented
-fn usize strv_rfind(StrView hay, StrView needle) {
-    assert(0 && " not implemented");
+fn usize sv_rfind(StrView hay, StrView needle) {
+    FX_ASSERT_MSG(0, "not implemented");
     return 0;
 }
 
 // TODO: not implemented
-fn usize strv_rfind_char(StrView hay, char needle) {
-    assert(0 && " not implemented");
+fn usize sv_rfind_char(StrView hay, char needle) {
+    FX_ASSERT_MSG(0, "not implemented");
     return 0;
 }
 
 // TODO: not implemented
-fn b8 strv_contains(StrView hay, StrView needle) {
-    assert(0 && " not implemented");
+fn b8 sv_contains(StrView hay, StrView needle) {
+    FX_ASSERT_MSG(0, "not implemented");
     return false;
 }
 
 // TODO: not implemented
-fn StrView strv_trim(StrView strv) {
-    assert(0 && "not implemented");
+fn StrView sv_trim(StrView sv) {
+    FX_ASSERT_MSG(0, "not implemented");
     return STRV_NULL;
 }
 
 // TODO: not implemented
-fn StrView strv_ltrim(StrView strv) {
-    assert(0 && "not implemented");
+fn StrView sv_ltrim(StrView sv) {
+    FX_ASSERT_MSG(0, "not implemented");
     return STRV_NULL;
 }
 
 // TODO: not implemented
-fn StrView strv_rtrim(StrView strv) {
-    assert(0 && "not implemented");
+fn StrView sv_rtrim(StrView sv) {
+    FX_ASSERT_MSG(0, "not implemented");
     return STRV_NULL;
 }
 
 // TODO: not implemented
-fn StrView strv_trim_str(StrView strv, StrView trim) {
-    assert(0 && "not implemented");
+fn StrView sv_trim_str(StrView sv, StrView trim) {
+    FX_ASSERT_MSG(0, "not implemented");
     return STRV_NULL;
 }
 
 // TODO: not implemented
-fn StrView strv_ltrim_str(StrView strv, StrView trim) {
-    assert(0 && "not implemented");
+fn StrView sv_ltrim_str(StrView sv, StrView trim) {
+    FX_ASSERT_MSG(0, "not implemented");
     return (StrView){0};
 }
 
 // TODO: not implemented
-fn StrView strv_rtrim_str(StrView strv, StrView trim) {
-    assert(0 && "not implemented");
+fn StrView sv_rtrim_str(StrView sv, StrView trim) {
+    FX_ASSERT_MSG(0, "not implemented");
     return (StrView){0};
 }
 
-fn StrView strv_split_next(StrView *remaining, char delimiter) {
-    if (!remaining || strv_is_null(*remaining)) {
+fn StrView sv_split_next(StrView *remaining, char delimiter) {
+    if (!remaining || sv_is_null(*remaining)) {
         return STRV_NULL;
     }
 
@@ -579,32 +579,32 @@ fn StrView strv_split_next(StrView *remaining, char delimiter) {
 }
 
 // TODO: not implemented
-fn StrView strv_split_next_str(StrView *remaining, StrView delimiter) {
-    assert(0 && " not implemented");
+fn StrView sv_split_next_str(StrView *remaining, StrView delimiter) {
+    FX_ASSERT_MSG(0, "not implemented");
     return STRV_NULL;
 }
 
 // TODO: not implemented
-fn b8 strb_append(StringBuilder *strb, StrView strv) {
-    assert(0 && "not implemented");
+fn b8 strb_append(StringBuilder *sb, StrView sv) {
+    FX_ASSERT_MSG(0, "not implemented");
     return false;
 }
 
 // TODO: not implemented
-fn b8 strb_append_char(StringBuilder *strb, char c) {
-    assert(0 && "not implemented");
+fn b8 strb_append_char(StringBuilder *sb, char c) {
+    FX_ASSERT_MSG(0, "not implemented");
     return false;
 }
 
 // TODO: not implemented
-fn b8 strb_append_cstr(StringBuilder *strb, const char *cstr) {
-    assert(0 && "not implemented");
+fn b8 strb_append_cstr(StringBuilder *sb, const char *cstr) {
+    FX_ASSERT_MSG(0, "not implemented");
     return false;
 }
 
 // TODO: not implemented
-fn b8 strb_reset(StringBuilder *strb) {
-    assert(0 && "not implemented");
+fn b8 strb_reset(StringBuilder *sb) {
+    FX_ASSERT_MSG(0, "not implemented");
     return false;
 }
 
