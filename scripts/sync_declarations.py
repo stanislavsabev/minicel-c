@@ -157,20 +157,19 @@ def extract_return_type(declaration: str) -> str:
     return match.group(1).strip() if match else "void"
 
 
-def generate_stub_implementation(name, declaration: str) -> list[str]:
+def generate_stub_implementation(declaration: str) -> list[str]:
     """
     Generate a stub implementation for a declaration.
     Returns list of lines for the stub.
     """
     signature = declaration.rstrip(";").strip()
-    func_name = name
     return_type = extract_return_type(declaration)
 
     lines = [
         "",
         "// TODO: not implemented",
-        f"fn {signature} {{",
-        f'    assert(0 && "{func_name} not implemented");',
+        f"{signature} {{",
+        '    assert(0 && " not implemented");',
     ]
 
     # Add return statement based on return type
@@ -248,7 +247,7 @@ def sync_declarations(filepath: Path) -> tuple[str, list[str], list[str]]:
 
         new_lines = lines_stripped[:insert_line]
         for name, declaration in missing_impls:
-            stub_lines = generate_stub_implementation(name, declaration)
+            stub_lines = generate_stub_implementation(declaration)
             new_lines.extend(stub_lines)
         new_lines.extend(lines_stripped[insert_line:])
         lines_stripped = new_lines

@@ -91,7 +91,7 @@ sync:
 
 f: format ##
 format: ## Format with clang-format
-	@clang-format -i $(SRCS)
+	@clang-format -i $(SRCS) $(SRC_HEADERS)
 
 h: help ##
 help: ## Show this message
