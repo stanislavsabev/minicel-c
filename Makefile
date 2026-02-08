@@ -1,8 +1,4 @@
 # Compiler Flags
-CC = gcc
-STD = -std=c99
-CFLAGS = -Wall -Wextra -std=c99 -fPIC -g3 -O0 -I.
-
 DFLAGS = DEBUG
 
 # Directories
@@ -33,11 +29,12 @@ help: ## Show this message
 b: build ##
 build: debug ## Build current target
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -I$(INC_DIR) -c $^ -o $@
-
 $(TARGET): $(OBJS) $(SRC_HEADERS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(BIN_DIR)/$(TARGET)
+	gcc -std=c99 \
+		-Wall -Wextra -fPIC -g3 -O0 \
+		-I$(SRC_HEADERS) \
+		$(SRCS) \
+		-o $(BIN_DIR)/$(TARGET)
 
 
 db: debug

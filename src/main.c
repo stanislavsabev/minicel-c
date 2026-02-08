@@ -37,10 +37,10 @@ typedef struct Expr {
     EvalState eval_state; // index from the expr_states array
 } Expr;
 
-typedef struct ArrayExprs {
-    usize len;
+typedef struct Array_Expr {
     Expr *data;
-} ArrayExprs;
+    usize len;
+} Array_Expr;
 
 typedef enum {
     VALUE_TYPE_EMPTY,
@@ -58,23 +58,23 @@ typedef union {
     usize expr_ndx; // index from the expressions array
 } Value;
 
-typedef struct {
+typedef struct Cell {
     usize row;
     usize col;
     Value value_as;
     ValueType value_type;
 } Cell;
 
-typedef struct ArrayCells {
-    usize len;
+typedef struct Array_Cell {
     Cell *data;
-} ArrayCells;
+    usize len;
+} Array_Cell;
 
-typedef struct {
+typedef struct Table {
     usize nrows;
     usize ncols;
-    Cell *cells;
-    Expr *exprs;
+    Array_Cell *cells;
+    Array_Expr *exprs;
 } Table;
 
 void print_horizontal_line(usize cell_width, usize ncols) {
@@ -85,18 +85,17 @@ void print_horizontal_line(usize cell_width, usize ncols) {
     fprintf(stdout, "\n");
 }
 
-Cell create_cell(usize row, usize col, usize row_count, Table *tbl) {
+Cell create_cell(Arena *arena, usize row, usize col, usize row_count, Table *tbl) {
     Cell cell = {.row = row, .col = col};
     char ch = 'A' + col;
 
     if (row == 0) {
         // Header cells
         usize len = 4;
-        usize sz = len * sizeof(char);
-        char *header = malloc(sz);
-        snprintf(header, sz, "%c", ch);
+        char *header = (char *)arena_alloc(arena, len);
+        snprintf(header, len, "%c", ch);
 
-        dprintf("\nsz: %lu vs sizeof(header): %lu\n", sz, sizeof(header));
+        fprintf("\nsz: %zu vs sizeof(header): %lu\n", len, sizeof(header));
 
         cell.value_type = VALUE_TYPE_TEXT;
         cell.value_as.str = header;
@@ -119,13 +118,14 @@ Cell create_cell(usize row, usize col, usize row_count, Table *tbl) {
             snprintf(expr_str, sz, "=-%d", (int)(row + 2 + col));
         }
         Expr expr = {.str = expr_str, .eval_state = EVAL_STATE_NOT_STARTED, .value = 0};
-        usize expr_ndx = fxarr_len(tbl->exprs);
+        usize expr_ndx = tbl->exprs->len;
 
         cell.value_as.expr_ndx = expr_ndx;
         cell.value_type = VALUE_TYPE_EXPR;
 
-        fxarr_append(tbl->exprs, expr);
-        dfprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
+        tbl->exprs->data[tbl->exprs->len - 1] = expr;
+
+        fprintf(stdout, "exprs at: %p, ln: %lu\n", tbl->exprs, arr_len(tbl->exprs));
     }
     return cell;
 }
@@ -179,53 +179,63 @@ error:
 /// @param tbl - table with cells
 /// @param csv - str with csv data
 /// @return 0 if no errors or non zero error code
-int build_table(Table *tbl, StrView csv) {
-    ArrayCells cells[MAX_ROWS * MAX_COLUMNS] = {0};
-    ArrayExprs exprs[MAX_ROWS * MAX_COLUMNS] = {0};
+int build_table(Arena *arena, Table *tbl, StrView csv) {
+    u8 *cell_mem =
+        (u8 *)arena_alloc(arena, sizeof(Array_Cell) + sizeof(Cell) * MAX_ROWS * MAX_COLUMNS);
+    Array_Cell *cells = (Array_Cell *)cell_mem;
+    cells->data = (Cell *)cell_mem + sizeof(Array_Cell);
+    cells->len = MAX_ROWS * MAX_COLUMNS;
 
-    StrView line = sv_split_next(&csv, '\n');
+    u8 *expr_mem =
+        (u8 *)arena_alloc(arena, sizeof(Array_Expr) + sizeof(Expr) * MAX_ROWS * MAX_COLUMNS);
+    Array_Expr *exprs = (Array_Expr *)expr_mem;
+    exprs->data = (Expr *)expr_mem + sizeof(Array_Expr);
+    exprs->len = MAX_ROWS * MAX_COLUMNS;
 
-    while (!strv_is_empty(line)) {
-        StrView column = sv_split_next(&line, ',');
-
-        while (!str_is_null(&column)) {
-            column = str_lsplit_chr(&line, ',');
+    // TODO:
+    StrView line = {0};
+    while (!sv_is_null(line = sv_split_next(&csv, '\n'))) {
+        printf("line=%*s", line.len, line.data);
+        StrView token = {0};
+        while (!sv_is_null(token = sv_split_next(&line, ','))) {
+            /* code */
+            printf("token=%*s", token.len, token.data);
         }
-        line = str_lsplit_chr(&csv, '\n');
     }
 
     return 0;
 }
 
-/// @brief Builds table from csv data
-/// @param tbl - table with cells
-/// @param csv - str with csv data
-/// @return 0 if no errors or non zero error code
-int build_table_dummy(Table *tbl, StrView csv) {
-    usize row_count = tbl->nrows = 4;
-    usize col_count = tbl->ncols = 3;
+// /// @brief Builds table from csv data
+// /// @param tbl - table with cells
+// /// @param csv - str with csv data
+// /// @return 0 if no errors or non zero error code
+// int build_table_dummy(Table *tbl, StrView csv) {
+//     usize row_count = tbl->nrows = 4;
+//     usize col_count = tbl->ncols = 3;
 
-    fxarr_type(Cell) cells = NULL;
-    // fxarr_reserve(cells, row_count * col_count);
+//     Array_Cell *cells = NULL;
+//     arr_init(cells, Cell, row_count * col_count);
 
-    fxarr_type(Expr) exprs = NULL;
-    // fxarr_reserve(exprs, 3);
-    tbl->cells = cells;
-    tbl->exprs = exprs;
+//     Array_Expr *exprs = NULL;
+//     // fxarr_reserve(exprs, 3);
+//     tbl->cells = cells;
+//     tbl->exprs = exprs;
 
-    for (usize row = 0; row < row_count; row++) {
-        for (usize col = 0; col < col_count; col++) {
-            Cell cell = create_cell(row, col, row_count, tbl);
-            fxarr_append(tbl->cells, cell);
-        }
-    }
+//     for (usize row = 0; row < row_count; row++) {
+//         for (usize col = 0; col < col_count; col++) {
+//             Cell cell = create_cell(row, col, row_count, tbl);
+//             arr_append(tbl->cells, cell);
+//         }
+//     }
 
-    dfprintf(
-        stderr, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs, exprs == tbl->exprs);
-    dfprintf(stderr, "cells at: %p, ln: %lu\n", tbl->cells, fxarr_len(tbl->cells));
-    dfprintf(stderr, "exprs at: %p, ln: %lu\n", tbl->exprs, fxarr_len(tbl->exprs));
-    return 0;
-}
+//     fprintf(
+//         stderr, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs, exprs ==
+//         tbl->exprs);
+//     fprintf(stderr, "cells at: %p, ln: %lu\n", tbl->cells, arr_len(tbl->cells));
+//     fprintf(stderr, "exprs at: %p, ln: %lu\n", tbl->exprs, arr_len(tbl->exprs));
+//     return 0;
+// }
 
 /// @param cell table cell
 /// @param exprs array with expressions
@@ -265,7 +275,7 @@ char *cell_rc_strview(const Cell *cell) {
     usize sz = 64 * sizeof(char);
     char *buff = malloc(sz);
     snprintf(buff, sz, "CELL(%lu, %lu)", cell->row, cell->col);
-    dfprintf(stdout, "\nsz: %lu vs sizeof(buff): %lu\n", sz, sizeof(buff));
+    fprintf(stdout, "\nsz: %lu vs sizeof(buff): %lu\n", sz, sizeof(buff));
     return buff;
 }
 
@@ -278,9 +288,9 @@ void print_table(Table *tbl) {
         fprintf(stdout, "|");
         for (usize c = 0; c < tbl->ncols; c++) {
             usize rc = r * tbl->ncols + c;
-            Cell cell = tbl->cells[rc];
+            Cell cell = tbl->cells->data[rc];
             char cell_str[CELL_PRINT_WIDTH + 1];
-            cell_strview(&cell, tbl->exprs, with_type, cell_str, sizeof(cell_str));
+            cell_strview(&cell, tbl->exprs->data, with_type, cell_str, sizeof(cell_str));
             usize ln = strlen(cell_str);
 
             // print centered text in the header
@@ -294,7 +304,7 @@ void print_table(Table *tbl) {
             } else if (r > 0 && cell.value_type == VALUE_TYPE_EXPR) {
                 int rpadding = cell_width - ln - 1;
                 fprintf(stdout, "%s%*s", cell_str, rpadding, "");
-                Expr exp = tbl->exprs[cell.value_as.expr_ndx];
+                Expr exp = tbl->exprs->data[cell.value_as.expr_ndx];
                 if (exp.eval_state == EVAL_STATE_EVALUATED) {
                     fprintf(stdout, " (%.2f)", exp.value);
                 }
@@ -349,7 +359,7 @@ typedef enum {
     TOKEN_TYPE_ENUM_COUNT,
 } TokenType;
 
-typedef struct {
+typedef struct Token {
     TokenType type;
     usize len;
     const char *s;
@@ -361,6 +371,7 @@ typedef struct {
 bool is_operator(const char *ch) { return strchr(OPERATORS, *ch) != NULL; }
 
 bool is_column_address(const char *s, usize len) { return false; }
+
 bool is_row_address(const char *s, usize len) { return false; }
 
 char get_decimal_point() {
@@ -378,7 +389,7 @@ Cell *table_cell_at(Table *tbl, AddressRC *addr) {
         return NULL;
     }
     usize index = addr->row * tbl->ncols + addr->col;
-    return &tbl->cells[index];
+    return &tbl->cells->data[index];
 }
 
 Token number_token(const char *s, usize len) {
@@ -459,7 +470,7 @@ void consume(const char *what, const char **s, usize *len) {
     usize i = 0;
 
     while (what[i] == sp[i]) {
-        dfprintf(stderr, "consuming: %c\n", what[i]);
+        fprintf(stderr, "consuming: %c\n", what[i]);
         ++i;
     }
     *s = sp + i;
@@ -523,17 +534,15 @@ char *TokenType_to_str(TokenType token_type) {
     return "";
 }
 
-f64 str_tod(const char *s, usize len) {
+f64 str_tod(const char *s, usize len, String *scratch) {
     // tmp str for conversions
-    static fxarr_type(char) tmp_cstr = NULL;
-    fxarr_reserve(tmp_cstr, len);
-    strncpy(tmp_cstr, s, len);
-    tmp_cstr[len] = '\0';
-    return strtod(tmp_cstr, NULL);
+    strncpy(scratch->data, s, len);
+    scratch->data[len] = '\0';
+    return strtod(scratch->data, NULL);
 }
 
 Ast parse_expression(const char **expr, usize *len) {
-    dfprintf(stderr, "expr %.*s\n", (int)*len, *expr);
+    fprintf(stderr, "expr %.*s\n", (int)*len, *expr);
 
     Ast ast = ast_default();
 
@@ -544,7 +553,7 @@ Ast parse_expression(const char **expr, usize *len) {
         Token token = get_next_token(&s, &ln);
         ;
 
-        dfprintf(stderr, "token: %.*s, type: %s\n", (int)token.len, token.s,
+        fprintf(stderr, "token: %.*s, type: %s\n", (int)token.len, token.s,
             TokenType_to_str(token.type));
 
         switch (token.type) {
@@ -559,9 +568,11 @@ Ast parse_expression(const char **expr, usize *len) {
         }
         case TOKEN_TYPE_NUMBER: {
             // Parse number
-            f64 number = str_tod(token.s, token.len);
+            char buff[256] = {};
+            String scratch = {.data = buff, .len = 256};
+            f64 number = str_tod(token.s, token.len, &scratch);
             Token lookahead = get_next_token(&s, &ln);
-            dfprintf(stderr, "lookahead: %.*s, type: %s\n", (int)lookahead.len, lookahead.s,
+            fprintf(stderr, "lookahead: %.*s, type: %s\n", (int)lookahead.len, lookahead.s,
                 TokenType_to_str(lookahead.type));
 
             // No next token - return the number
@@ -606,7 +617,7 @@ Ast parse_expression(const char **expr, usize *len) {
 f64 evaluate_ast(Ast *ast, Table *tbl);
 
 void evaluate_expr_cell(Cell *c, Table *tbl) {
-    Expr *expr = &tbl->exprs[c->value_as.expr_ndx];
+    Expr *expr = &tbl->exprs->data[c->value_as.expr_ndx];
 
     if (expr->eval_state == EVAL_STATE_EVALUATED) {
         return;
@@ -683,8 +694,8 @@ f64 evaluate_ast(Ast *ast, Table *tbl) {
 }
 
 fn void evaluate_expr_cells(Table *tbl) {
-    Cell *end = fxarr_end(tbl->cells);
-    for (Cell *c = fxarr_begin(tbl->cells); c < end; ++c) {
+    Cell *end = &tbl->cells->data[tbl->cells->len - 1];
+    for (Cell *c = &tbl->cells->data[0]; c < end; ++c) {
         if (c->value_type == VALUE_TYPE_EXPR) {
             evaluate_expr_cell(c, tbl);
         }
@@ -693,7 +704,7 @@ fn void evaluate_expr_cells(Table *tbl) {
 
 fn void print_usage() { puts("usage: ./minicell <filename.csv>"); }
 
-int main(i32 argc, char const *argv[argc]) {
+i32 main(i32 argc, char const *argv[argc]) {
     if (argc != 2) {
         fprintf(stderr, "Missing or invalid argument list. See -h for usage.\n");
         return EXIT_FAILURE;
@@ -704,9 +715,9 @@ int main(i32 argc, char const *argv[argc]) {
         return EXIT_SUCCESS;
     }
 
-    u8 *backing_buffer = (u8)malloc(MEM_PAGE_SIZE);
+    void *backing_buffer = malloc(MEM_PAGE_SIZE * 2);
     Arena arena = {0};
-    arena_init(&arena, backing_buffer, MEM_PAGE_SIZE);
+    arena_init(&arena, backing_buffer, MEM_PAGE_SIZE * 2);
 
     String *csv = read_csv(&arena, argv[1]);
     if (csv == NULL) {
@@ -716,35 +727,19 @@ int main(i32 argc, char const *argv[argc]) {
     fwrite(csv->data, 1, csv->len, stdout);
 
     Table tbl = {0};
-    if (build_table(&tbl, str_to_strv(csv))) {
+    if (build_table(&arena, &tbl, str_to_sv(csv))) {
         return EXIT_FAILURE;
     }
     print_table(&tbl);
 
     evaluate_expr_cells(&tbl);
 
-    dprintf("cells at: %p, ln: %lu\n", tbl.cells, fxarr_len(tbl.cells));
-    dprintf("exprs at: %p, ln: %lu\n", tbl.exprs, fxarr_len(tbl.exprs));
+    fprintf("cells at: %p, ln: %zu\n", tbl.cells, tbl.cells->len);
+    fprintf("exprs at: %p, ln: %zu\n", tbl.exprs, tbl.exprs->len);
 
     print_table(&tbl);
-
-    fxarr_free(tbl.cells);
-    fxarr_free(tbl.exprs);
+    arena_free(&arena);
+    free(backing_buffer);
 
     return EXIT_SUCCESS;
-}
-
-// TODO: SAVE
-fn size_t arena_remaining(Arena *arena);
-
-fn void arena_snapshot_restore(ArenaSnapshot snapshot) {
-    Arena *arena = snapshot.arena;
-    arena->offset = snapshot.offset;
-}
-
-// String implementation
-fn StrView strv_from_cstr(const char *cstr) {
-    if (cstr == NULL)
-        return STRV_NULL;
-    return (StrView){.data = cstr, .len = strlen(cstr)};
 }

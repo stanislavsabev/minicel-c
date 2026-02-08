@@ -40,6 +40,17 @@ typedef ptrdiff_t pdiff;
 // MACROS
 // clang-format off
 #define alignof(type) __alignof__(type)
+
+///@brief Gets the address pointing to the container which accommodates the respective member
+///@param ptr a pointer to container (struct)
+///@param type of the container
+///@param the name of the member the pointer refers to
+#define container_of(ptr, type, member)                   \
+    ({                                                    \
+        const typeof(((type*)0)->member)* __mptr = (ptr); \
+        (type*)((char*)__mptr - offsetof(type, member));  \
+    })
+
 #define mem_zero(ptr, size) memset((ptr), 0, (size))
 
 #ifndef FX_DEBUG
@@ -72,12 +83,12 @@ typedef ptrdiff_t pdiff;
                         "FX_ASSERT FAILED\n"                                 \
                         "  Expr: %s\n"                                       \
                         "  File: %s:%d\n",                                   \
-                        #expr, __FILE__, __LINE__);                           \
-                    FX_DEBUG_BREAK();                                                 \
+                        #expr, __FILE__, __LINE__);                          \
+                    FX_DEBUG_BREAK();                                        \
                 }                                                            \
             } while (0)
             
-            #define FX_ASSERT_MSG(expr, msg)                                          \
+            #define FX_ASSERT_MSG(expr, msg)                                         \
                 do {                                                                 \
                     if (!(expr)) {                                                   \
                         fprintf(stderr,                                              \
@@ -85,8 +96,8 @@ typedef ptrdiff_t pdiff;
                             "  Expr: %s\n"                                           \
                             "  Msg : %s\n"                                           \
                             "  File: %s:%d\n",                                       \
-                            #expr, msg, __FILE__, __LINE__);                          \
-                        FX_DEBUG_BREAK();                                                     \
+                            #expr, msg, __FILE__, __LINE__);                         \
+                        FX_DEBUG_BREAK();                                            \
                     }                                                                \
                 } while (0)
     #else
@@ -94,6 +105,30 @@ typedef ptrdiff_t pdiff;
         #define FX_ASSERT_MSG(expr, msg) ((void)0)
     #endif
 #endif
+
+
+// Arena helpers
+#define arena_alloc_struct(arena, Type)     \
+    (Type *)arena_alloc((arena), sizeof(Type))
+
+
+// String helpers
+#define STRV_NULL            \
+    (StrView) { 0 }
+#define STRV_EMPTY           \
+    (StrView) { .data = "", .len = 0 }
+
+#define STRV_LIT(cstr) sv_from_cstr((cstr))
+
+// Array helpers
+#define arr_len(arr) (arr)->len
+
+
+#define FX_DEFINE_TRIVIAL_CLEANUP_FUNC(type, func) \
+    static inline void func##p(type* p) {          \
+        if (*p) func(*p);                          \
+    }                                              \
+    struct __useless_struct_to_allow_trailing_semicolon__
 
 // clang-format on
 // END MACROS
@@ -186,7 +221,7 @@ fn void *arena_alloc(Arena *arena, u64 size);
 fn StrView sv_from_cstr(const char *cstr);
 
 // Create an immutable view of a String
-fn StrView str_to_strv(const String *str);
+fn StrView str_to_sv(const String *str);
 
 // Allocate a String with given capacity from arena
 // String data buffer is allocated contiguously with the struct
@@ -297,19 +332,8 @@ fn String *str_from_cstr(Arena *arena, const char *cstr);
 
 // Create a String from StrView, allocating from arena
 // Returns NULL if sv is null or allocation fails
-fn String *str_from_strv(Arena *arena, StrView sv);
+fn String *str_from_sv(Arena *arena, StrView sv);
 // END fn DECLARATION
-
-// Arena helpers
-#define arena_alloc_struct(arena, Type) (Type *)arena_alloc((arena), sizeof(Type))
-
-// String helpers
-#define STRV_NULL                                                                                  \
-    (StrView) { 0 }
-#define STRV_EMPTY                                                                                 \
-    (StrView) { .data = "", .len = 0 }
-
-#define STRV_LIT(cstr) sv_from_cstr((cstr))
 
 // HASH TABLE
 // - TBD
@@ -391,7 +415,7 @@ fn void arena_snapshot_restore(ArenaSnapshot snapshot) {
 // String implementation
 fn b8 sv_is_null(StrView sv) { return sv.data == NULL; }
 fn b8 sv_is_empty(StrView sv) { return sv.data == NULL || sv.len == 0; }
-fn b8 sv_is_null_or_empty(StrView sv) { return (strv_is_null(sv) || sv_is_empty(sv)); }
+fn b8 sv_is_null_or_empty(StrView sv) { return (sv_is_null(sv) || sv_is_empty(sv)); }
 
 fn String *str_create(Arena *arena, usize len) {
     u8 *mem = (u8 *)arena_alloc((arena), sizeof(String) + len);
@@ -405,7 +429,7 @@ fn String *str_create(Arena *arena, usize len) {
 
 // TODO: not implemented
 fn b8 str_copy(String *dest, StrView src) {
-    if (strv_is_null(src)) {
+    if (sv_is_null(src)) {
         return false;
     }
     if (dest->len < src.len) {
@@ -431,8 +455,8 @@ fn String *str_from_cstr(Arena *arena, const char *cstr) {
     return str;
 }
 
-fn String *str_from_strv(Arena *arena, StrView sv) {
-    if (strv_is_null(sv))
+fn String *str_from_sv(Arena *arena, StrView sv) {
+    if (sv_is_null(sv))
         return NULL;
     String *str = str_create(arena, sv.len);
     if (!str)
@@ -447,7 +471,7 @@ fn StrView sv_from_cstr(const char *cstr) {
     return (StrView){.data = cstr, .len = strlen(cstr)};
 }
 
-fn StrView str_to_strv(const String *str) { return (StrView){.data = str->data, .len = str->len}; }
+fn StrView str_to_sv(const String *str) { return (StrView){.data = str->data, .len = str->len}; }
 
 fn b8 sv_eq(StrView left, StrView right) {
     if (left.len != right.len)
@@ -465,7 +489,7 @@ fn b8 sv_eq_cstr(StrView left, const char *right) {
 }
 
 fn b8 sv_starts_with(StrView sv, StrView prefix) {
-    if (strv_is_null_or_empty(sv) || sv_is_null_or_empty(prefix)) {
+    if (sv_is_null_or_empty(sv) || sv_is_null_or_empty(prefix)) {
         return false;
     }
     if (sv.len < prefix.len) {
@@ -479,7 +503,7 @@ fn b8 sv_starts_with(StrView sv, StrView prefix) {
 }
 
 fn b8 sv_ends_with(StrView sv, StrView suffix) {
-    if (strv_is_null_or_empty(sv) || sv_is_null_or_empty(suffix)) {
+    if (sv_is_null_or_empty(sv) || sv_is_null_or_empty(suffix)) {
         return false;
     }
     if (sv.len < suffix.len) {
