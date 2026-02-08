@@ -29,17 +29,19 @@ help: ## Show this message
 b: build ##
 build: debug ## Build current target
 
-$(TARGET): $(OBJS) $(SRC_HEADERS)
-	gcc -std=c99 \
-		-Wall -Wextra -fPIC -g3 -O0 \
-		-I$(SRC_HEADERS) \
-		$(SRCS) \
+
+$(TARGET): $(SRCS) $(SRC_HEADERS)
+	gcc -std=c99        \
+		-Wall           \
+		-fPIC -g3 -O0   \
+		$(DFLAGS)       \
+		$(SRC_HEADERS)  \
+		$(SRCS)         \
 		-o $(BIN_DIR)/$(TARGET)
 
 
 db: debug
 debug: makedirs Makefile
-debug: CFLAGS += $(DFLAGS) # set -D flags
 debug: $(TARGET)
 
 

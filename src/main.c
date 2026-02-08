@@ -6,10 +6,6 @@
 #include <string.h>
 #include <unistd.h>
 
-// #include "fx/arr.h"
-// #include "fx/str.h"
-// #include "fx/util.h"
-
 #define FX_IMPLEMENTATION
 #include "fx.h"
 
@@ -95,7 +91,7 @@ Cell create_cell(Arena *arena, usize row, usize col, usize row_count, Table *tbl
         char *header = (char *)arena_alloc(arena, len);
         snprintf(header, len, "%c", ch);
 
-        fprintf("\nsz: %zu vs sizeof(header): %lu\n", len, sizeof(header));
+        printf("\nsz: %zu vs sizeof(header): %lu\n", len, sizeof(header));
 
         cell.value_type = VALUE_TYPE_TEXT;
         cell.value_as.str = header;
@@ -130,8 +126,7 @@ Cell create_cell(Arena *arena, usize row, usize col, usize row_count, Table *tbl
     return cell;
 }
 
-String *read_csv(Arena *a, const char *file_name) {
-    char *buff = NULL;
+String *read_csv(Arena *arena, const char *file_name) {
     long len = 0;
     FILE *fp = fopen(file_name, "rb");
     if (fp == NULL) {
@@ -148,8 +143,8 @@ String *read_csv(Arena *a, const char *file_name) {
     fseek(fp, 0, SEEK_SET);
     rewind(fp);
 
-    ArenaSnapshot snapshot = arena_snapshot_save(a);
-    String *content = str_create(a, len);
+    ArenaSnapshot snapshot = arena_snapshot_save(arena);
+    String *content = str_create(arena, len);
 
     if (content == NULL) {
         goto error;
@@ -195,47 +190,17 @@ int build_table(Arena *arena, Table *tbl, StrView csv) {
     // TODO:
     StrView line = {0};
     while (!sv_is_null(line = sv_split_next(&csv, '\n'))) {
-        printf("line=%*s", line.len, line.data);
+        printf("line=%.*s", (i32)line.len, line.data);
         StrView token = {0};
         while (!sv_is_null(token = sv_split_next(&line, ','))) {
             /* code */
-            printf("token=%*s", token.len, token.data);
+            printf("token=%.*s", (i32)token.len, token.data);
         }
     }
 
     return 0;
 }
 
-// /// @brief Builds table from csv data
-// /// @param tbl - table with cells
-// /// @param csv - str with csv data
-// /// @return 0 if no errors or non zero error code
-// int build_table_dummy(Table *tbl, StrView csv) {
-//     usize row_count = tbl->nrows = 4;
-//     usize col_count = tbl->ncols = 3;
-
-//     Array_Cell *cells = NULL;
-//     arr_init(cells, Cell, row_count * col_count);
-
-//     Array_Expr *exprs = NULL;
-//     // fxarr_reserve(exprs, 3);
-//     tbl->cells = cells;
-//     tbl->exprs = exprs;
-
-//     for (usize row = 0; row < row_count; row++) {
-//         for (usize col = 0; col < col_count; col++) {
-//             Cell cell = create_cell(row, col, row_count, tbl);
-//             arr_append(tbl->cells, cell);
-//         }
-//     }
-
-//     fprintf(
-//         stderr, "exprs p == %p, tbl.exprs %p, same: %d\n", exprs, tbl->exprs, exprs ==
-//         tbl->exprs);
-//     fprintf(stderr, "cells at: %p, ln: %lu\n", tbl->cells, arr_len(tbl->cells));
-//     fprintf(stderr, "exprs at: %p, ln: %lu\n", tbl->exprs, arr_len(tbl->exprs));
-//     return 0;
-// }
 
 /// @param cell table cell
 /// @param exprs array with expressions
@@ -734,8 +699,8 @@ i32 main(i32 argc, char const *argv[argc]) {
 
     evaluate_expr_cells(&tbl);
 
-    fprintf("cells at: %p, ln: %zu\n", tbl.cells, tbl.cells->len);
-    fprintf("exprs at: %p, ln: %zu\n", tbl.exprs, tbl.exprs->len);
+    printf("cells at: %p, ln: %zu\n", tbl.cells, tbl.cells->len);
+    printf("exprs at: %p, ln: %zu\n", tbl.exprs, tbl.exprs->len);
 
     print_table(&tbl);
     arena_free(&arena);
