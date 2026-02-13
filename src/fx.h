@@ -105,24 +105,109 @@ typedef ptrdiff_t pdiff;
         #define FX_ASSERT_MSG(expr, msg) ((void)0)
     #endif
 #endif
+// END MACROS
 
+// ARRAYS
+
+// Fixed Array
+#define Array(T)                \
+    struct {                    \
+        T *data;                \
+        usize len;              \
+        usize capacity;         \
+    }
+
+#define arr_new() \
+    {NULL, 0, 0}
+
+#define arr_init(self, data, capacity) \
+    do {                                                                               \
+        (self)->data = (data);                                                         \
+        (self)->len = 0;                                                               \
+        (self)->capacity = (capacity);                                                 \
+    } while (0)
+
+// Dynamic Array
+// TODO: Add macros to create, resize and free the array
+//  Add bounce checking access macros/functions, etc.
+#define DArray(T)               \
+    struct {                    \
+        T *data;                \
+        usize len;              \
+        usize capacity;         \
+        Arena *arena;           \
+    }
+
+#define darr_new() \
+    {NULL, 0, 0, NULL}
+
+#define darr_init(self, capacity, arena) \
+    do {                                                                                             \
+        T* data = (T*)arena_alloc((Arena *)(arena), sizeof(*(self).data) * (capacity) + sizeof *(self));      \
+        if (data) {                                                                                  \
+            mem_zero(data, (capacity));                                                              \
+        }                                                                                            \
+        (self)->data = data;                                                                         \
+        (self)->capacity = (data == NULL) ? (capacity) : 0;                                          \
+        (self)->len = 0;                                                                             \
+    } while (0)
+    
+// Array helpers
+#define arr_len(self) (self)->len
+#define arr_capacity(self) (self)->capacity
+#define arr_append(self, item) (FX_ASSERT((self)->len < (self)->capacity), (self)->data[(self)->len++] = (item))
+#define arr_front(self) (self)->data[0]
+#define arr_back(self) (self)->data[(self)->len - 1]
+#define arr_get(self, ndx) (FX_ASSERT(ndx > 0), FX_ASSERT(ndx < (self)->len), (self)->data[ndx])
+#define arr_set(self, ndx, item) (FX_ASSERT(ndx > 0), FX_ASSERT(ndx < (self)->len), (self)->data[ndx] = (item))
+// TODO: Implement darr_append + darr_ensure_capacity + darr_reserve
+
+// ARENA structs
+typedef struct Arena {
+    u8* buffer;
+    u64 buffer_size;
+    u64 offset;
+} Arena;
+
+typedef struct ArenaSnapshot {
+    Arena* arena;
+    u64 offset;   // The offset at the time of the snapshot
+} ArenaSnapshot;
 
 // Arena helpers
 #define arena_alloc_struct(arena, Type)     \
     (Type *)arena_alloc((arena), sizeof(Type))
 
+// STRING
+
+// Immutable String View (Slice)
+typedef struct StrView {
+    const char* data;
+    usize len;
+} StrView;
+
+// Mutable String with fixed length
+typedef struct String {
+    char* data;
+    usize len;
+} String;
+
+// Mutable, growable String array with memory owning Arena
+typedef struct StringBuilder {
+    char* data;
+    usize len;
+    usize capacity;
+    Arena* arena;
+} StringBuilder;
 
 // String helpers
-#define STRV_NULL            \
+#define SV_NULL            \
     (StrView) { 0 }
-#define STRV_EMPTY           \
+
+    #define SV_EMPTY           \
     (StrView) { .data = "", .len = 0 }
 
-#define STRV_LIT(cstr) sv_from_cstr((cstr))
-
-// Array helpers
-#define arr_len(arr) (arr)->len
-
+#define SV_LIT(cstr) sv_from_cstr((cstr))
 
 #define FX_DEFINE_TRIVIAL_CLEANUP_FUNC(type, func) \
     static inline void func##p(type* p) {          \
@@ -130,56 +215,10 @@ typedef ptrdiff_t pdiff;
     }                                              \
     struct __useless_struct_to_allow_trailing_semicolon__
 
-// clang-format on
-// END MACROS
-
-// ARENA structs
-typedef struct Arena {
-    u8 *buffer;
-    u64 buffer_size;
-    u64 offset;
-} Arena;
-
-typedef struct ArenaSnapshot {
-    Arena *arena;
-    u64 offset; // The offset at the time of the snapshot
-} ArenaSnapshot;
-
-// STRING
-
-// Immutable String View (Slice)
-typedef struct StrView {
-    const char *data;
-    usize len;
-} StrView;
-
-// Mutable String with fixed length
-typedef struct String {
-    char *data;
-    usize len;
-} String;
-
-// Mutable, growable String array with memory owning Arena
-typedef struct StringBuilder {
-    char *data;
-    usize len;
-    usize capacity;
-    Arena *arena;
-} StringBuilder;
-
-// ARRAY
-
-// Generic, growable Array
-// TODO: Add macros to create, resize and free the array
-//  Add bounce checking access macros/functions, etc.
-typedef struct Array {
-    void *data;
-    usize len;
-    usize capacity;
-} Array;
-
 // fn DECLARATION
 #define fn
+
+// clang-format on
 
 // Check if a value is a power of two
 fn b8 mem_is_power_of_two(u64 value);
@@ -217,7 +256,7 @@ fn void *arena_alloc(Arena *arena, u64 size);
 // STRING DECLARATIONS
 
 // Create a StrView from a null-terminated C string
-// Returns STRV_NULL if cstr is NULL
+// Returns SV_NULL if cstr is NULL
 fn StrView sv_from_cstr(const char *cstr);
 
 // Create an immutable view of a String
@@ -295,7 +334,7 @@ fn b8 sv_contains(StrView hay, StrView needle);
 
 // Split StrView on delimiter and advance remaining pointer
 // Returns the token before delimiter,
-//  STRV_NULL if remaining is NULL or STRV_NULL
+//  SV_NULL if remaining is NULL or SV_NULL
 fn StrView sv_split_next(StrView *remaining, char delimiter);
 
 // Split StrView on sub-string delimiter and advance remaining pointer
@@ -344,10 +383,9 @@ fn String *str_from_sv(Arena *arena, StrView sv);
 fn b8 mem_is_power_of_two(u64 value) { return (value & (value - 1)) == 0; }
 
 // Arena Implementation
-#    include <assert.h>
 
 fn u64 mem_align_forward(u64 ptr, u64 alignment) {
-    assert(mem_is_power_of_two(alignment) && "Alignment must be a power of two");
+    FX_ASSERT_MSG(mem_is_power_of_two(alignment), "Alignment must be a power of two");
 
     u64 p, a, modulo;
     p = ptr;
@@ -467,7 +505,7 @@ fn String *str_from_sv(Arena *arena, StrView sv) {
 
 fn StrView sv_from_cstr(const char *cstr) {
     if (cstr == NULL)
-        return STRV_NULL;
+        return SV_NULL;
     return (StrView){.data = cstr, .len = strlen(cstr)};
 }
 
@@ -549,25 +587,25 @@ fn b8 sv_contains(StrView hay, StrView needle) {
 // TODO: not implemented
 fn StrView sv_trim(StrView sv) {
     FX_ASSERT_MSG(0, "not implemented");
-    return STRV_NULL;
+    return SV_NULL;
 }
 
 // TODO: not implemented
 fn StrView sv_ltrim(StrView sv) {
     FX_ASSERT_MSG(0, "not implemented");
-    return STRV_NULL;
+    return SV_NULL;
 }
 
 // TODO: not implemented
 fn StrView sv_rtrim(StrView sv) {
     FX_ASSERT_MSG(0, "not implemented");
-    return STRV_NULL;
+    return SV_NULL;
 }
 
 // TODO: not implemented
 fn StrView sv_trim_str(StrView sv, StrView trim) {
     FX_ASSERT_MSG(0, "not implemented");
-    return STRV_NULL;
+    return SV_NULL;
 }
 
 // TODO: not implemented
@@ -584,7 +622,7 @@ fn StrView sv_rtrim_str(StrView sv, StrView trim) {
 
 fn StrView sv_split_next(StrView *remaining, char delimiter) {
     if (!remaining || sv_is_null(*remaining)) {
-        return STRV_NULL;
+        return SV_NULL;
     }
 
     for (usize i = 0; i < remaining->len; i++) {
@@ -598,14 +636,14 @@ fn StrView sv_split_next(StrView *remaining, char delimiter) {
     }
     // No delimiter found - return the rest and mark remaining as done
     StrView last = *remaining;
-    *remaining = STRV_NULL;
+    *remaining = SV_NULL;
     return last;
 }
 
 // TODO: not implemented
 fn StrView sv_split_next_str(StrView *remaining, StrView delimiter) {
     FX_ASSERT_MSG(0, "not implemented");
-    return STRV_NULL;
+    return SV_NULL;
 }
 
 // TODO: not implemented

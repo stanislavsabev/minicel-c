@@ -154,7 +154,7 @@ String *read_csv(Arena *arena, const char *file_name) {
     if (ferror(fp)) {
         goto error;
     }
-    assert(read == (usize)len);
+    FX_ASSERT(read == (usize)len);
 
     fclose(fp);
     return content;
@@ -200,7 +200,6 @@ int build_table(Arena *arena, Table *tbl, StrView csv) {
 
     return 0;
 }
-
 
 /// @param cell table cell
 /// @param exprs array with expressions
@@ -681,6 +680,9 @@ i32 main(i32 argc, char const *argv[argc]) {
     }
 
     void *backing_buffer = malloc(MEM_PAGE_SIZE * 2);
+    if (backing_buffer == NULL) {
+        EXIT_FAILURE;
+    }
     Arena arena = {0};
     arena_init(&arena, backing_buffer, MEM_PAGE_SIZE * 2);
 
